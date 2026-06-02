@@ -1210,19 +1210,25 @@
         const latest = sorted.slice(0, 8);
         const campaign = state.entries.filter(e => hasTag(e, '战役框架'));
         const module = state.entries.filter(e => hasTag(e, '模组'));
-        const resourceTags = ['职业','领域','敌人','环境','传承'];
-        const resource = state.entries.filter(e => resourceTags.some(t => hasTag(e, t)));
+        const campaignOrModule = new Set([...campaign.map(e => e.id), ...module.map(e => e.id)]);
+        const playerResourceTags = ['职业','领域','传承','装备物品'];
+        const playerResource = state.entries.filter(e =>
+          !campaignOrModule.has(e.id) && playerResourceTags.some(t => hasTag(e, t)));
+        const gmResourceTags = ['敌人','环境','碎心者工具集','遭遇','转变卡','地点设定'];
+        const gmResource = state.entries.filter(e =>
+          !campaignOrModule.has(e.id) && gmResourceTags.some(t => hasTag(e, t)));
         const extRule = state.entries.filter(e => hasTag(e, '扩展规则'));
-        const allSpecialTags = ['战役框架','模组','职业','领域','敌人','环境','传承','扩展规则'];
+        const allSpecialTags = ['战役框架','模组','扩展规则',...playerResourceTags,...gmResourceTags];
         const tagged = new Set([
-          ...campaign, ...module, ...resource, ...extRule
+          ...campaign, ...module, ...playerResource, ...gmResource, ...extRule
         ].map(e => e.id));
         const other = state.entries.filter(e => !tagged.has(e.id));
 
         const sections = [
           { id: 'sec-latest', label: '最新收录', entries: latest },
           { id: 'sec-module', label: '模组', entries: module },
-          { id: 'sec-resource', label: '资源', entries: resource },
+          { id: 'sec-player', label: '玩家资源', entries: playerResource },
+          { id: 'sec-gm', label: 'GM资源', entries: gmResource },
           { id: 'sec-extrule', label: '扩展规则', entries: extRule },
           { id: 'sec-campaign', label: '战役框架', entries: campaign },
           { id: 'sec-other', label: '其他', entries: other },
