@@ -34,6 +34,7 @@
 
 ### 数据
 
+- `data/imports/`：外部来源转换后的中间 JSON
 - `data/runtime/entries.json`：运行期条目数据文件
 - `data/runtime/covers/`：运行期封面目录
 - `data/runtime/secrets/`：运行期口令与会话密钥文件

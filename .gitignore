@@ -2,8 +2,14 @@ __pycache__/
 *.pyc
 server/tests/.tmp/
 
+# 本地开发配置
+.claude/settings.local.json
+
+# 运行期数据
 data/runtime/entries.json
 data/runtime/covers/*
 !data/runtime/covers/.gitkeep
 data/runtime/secrets/*
 !data/runtime/secrets/.gitkeep
+data/imports/
+!data/imports/.gitkeep

@@ -308,8 +308,8 @@ def normalize_entry(
     current_entry: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     title = normalize_required_text(payload.get("title"), "title")
-    author = normalize_required_text(payload.get("author"), "author")
-    content_tags = normalize_tags(payload.get("contentTags"), required=True)
+    author = normalize_optional_text(payload.get("author"))
+    content_tags = normalize_tags(payload.get("contentTags"), required=False)
     flavor_tags = normalize_tags(payload.get("flavorTags"), required=False)
     recommend_value = normalize_recommend_value(payload.get("recommendValue"))
     summary = normalize_optional_text(payload.get("summary"))
@@ -405,7 +405,9 @@ def normalize_external_url(value: Any) -> str:
 
 
 def normalize_cover_path(value: Any, cover_url_prefix: str) -> str:
-    cover_path = normalize_required_text(value, "coverPath")
+    cover_path = normalize_optional_text(value)
+    if not cover_path:
+        return ""
     normalized_prefix = cover_url_prefix.rstrip("/") + "/"
     if not cover_path.startswith(normalized_prefix):
         raise ValidationError("coverPath must use the local cover URL prefix")

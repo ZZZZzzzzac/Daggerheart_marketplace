@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="zh-CN" data-theme="dark">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -9,7 +9,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Cinzel+Decorative:wght@700;900&display=swap" rel="stylesheet">
   <style>
     /* ══════════════════════════════════════════
-       CSS Variables & Design Tokens
+       Design Tokens — Dark Theme (default)
        ══════════════════════════════════════════ */
     :root {
       --bg-deepest: #0a0807;
@@ -17,6 +17,7 @@
       --bg-surface: #1b1713;
       --bg-elevated: #252019;
       --bg-highlight: #302922;
+      --bg-input: #14110d;
 
       --gold: #b89342;
       --gold-light: #c9a54e;
@@ -34,6 +35,22 @@
       --text-muted: #6b6354;
       --text-dim: #484133;
 
+      /* 可翻转边框 / 覆盖层 */
+      --border-card: rgba(255,255,255,0.04);
+      --border-subtle: rgba(255,255,255,0.05);
+      --border-input: rgba(255,255,255,0.06);
+      --border-hover: rgba(255,255,255,0.08);
+      --border-medium: rgba(255,255,255,0.12);
+      --border-gold: rgba(184,147,66,0.1);
+      --border-gold-strong: rgba(184,147,66,0.15);
+      --overlay-bg: rgba(0,0,0,0.7);
+      --overlay-light: rgba(0,0,0,0.6);
+      --tag-flavor-bg: rgba(255,255,255,0.03);
+      --tag-flavor-border: rgba(255,255,255,0.06);
+      --cover-gradient: rgba(10,8,7,0.7);
+      --btn-ghost-border: var(--border-hover);
+      --divider: var(--border-subtle);
+
       --font-display: 'Cinzel Decorative', 'Cinzel', 'Noto Serif SC', 'Source Han Serif SC', 'STSong', serif;
       --font-heading: 'Cinzel', 'Noto Serif SC', 'Source Han Serif SC', serif;
       --font-body: 'Noto Serif SC', 'Source Han Serif SC', 'STSong', 'SimSun', Georgia, serif;
@@ -43,17 +60,64 @@
       --radius-lg: 10px;
       --radius-card: 4px;
 
-      --shadow-card: 0 2px 12px rgba(0, 0, 0, 0.5);
-      --shadow-card-hover: 0 6px 28px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(184, 147, 66, 0.15);
-      --shadow-glow-gold: 0 0 20px rgba(184, 147, 66, 0.15);
-      --shadow-modal: 0 16px 64px rgba(0, 0, 0, 0.7);
+      --shadow-card: 0 2px 12px rgba(0,0,0,0.5);
+      --shadow-card-hover: 0 6px 28px rgba(0,0,0,0.6), 0 0 0 1px rgba(184,147,66,0.15);
+      --shadow-glow-gold: 0 0 20px rgba(184,147,66,0.15);
+      --shadow-modal: 0 16px 64px rgba(0,0,0,0.7);
 
       --transition-fast: 0.15s ease;
       --transition-base: 0.25s ease;
       --transition-slow: 0.4s ease;
 
       --max-width: 1320px;
-      --toolbar-height: 56px;
+    }
+
+    /* ══════════════════════════════════════════
+       Light Theme
+       ══════════════════════════════════════════ */
+    [data-theme="light"] {
+      --bg-deepest: #f3efe7;
+      --bg-deep: #e8e2d7;
+      --bg-surface: #faf7f1;
+      --bg-elevated: #f0ece2;
+      --bg-highlight: #e6e0d4;
+      --bg-input: #faf7f1;
+
+      --gold: #9a6e22;
+      --gold-light: #b08028;
+      --gold-bright: #c09030;
+      --gold-dim: #8a6e30;
+      --gold-dark: #ddd0a8;
+      --gold-pale: #6a5020;
+
+      --crimson: #8a3030;
+      --crimson-light: #a04040;
+      --crimson-glow: rgba(140,50,50,0.18);
+
+      --text-primary: #3a2e1c;
+      --text-secondary: #6b5a3e;
+      --text-muted: #9a8a6e;
+      --text-dim: #c8baa0;
+
+      --border-card: rgba(0,0,0,0.07);
+      --border-subtle: rgba(0,0,0,0.05);
+      --border-input: rgba(0,0,0,0.10);
+      --border-hover: rgba(0,0,0,0.12);
+      --border-medium: rgba(0,0,0,0.15);
+      --border-gold: rgba(154,110,34,0.12);
+      --border-gold-strong: rgba(154,110,34,0.2);
+      --overlay-bg: rgba(0,0,0,0.3);
+      --overlay-light: rgba(0,0,0,0.15);
+      --tag-flavor-bg: rgba(0,0,0,0.03);
+      --tag-flavor-border: rgba(0,0,0,0.07);
+      --cover-gradient: rgba(0,0,0,0.35);
+      --btn-ghost-border: rgba(0,0,0,0.12);
+      --divider: rgba(0,0,0,0.08);
+
+      --shadow-card: 0 2px 12px rgba(0,0,0,0.06);
+      --shadow-card-hover: 0 6px 24px rgba(0,0,0,0.10), 0 0 0 1px rgba(154,110,34,0.15);
+      --shadow-glow-gold: 0 0 20px rgba(154,110,34,0.08);
+      --shadow-modal: 0 16px 64px rgba(0,0,0,0.15);
     }
 
     /* ══════════════════════════════════════════
@@ -78,7 +142,7 @@
     }
 
     /* ══════════════════════════════════════════
-       Noise & Texture Overlay
+       Texture & Vignette
        ══════════════════════════════════════════ */
     .texture-overlay {
       position: fixed;
@@ -89,15 +153,17 @@
       background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='1'/%3E%3C/svg%3E");
       background-repeat: repeat;
       background-size: 180px 180px;
+      transition: opacity 0.5s ease;
     }
+    [data-theme="light"] .texture-overlay { opacity: 0.025; }
 
-    /* 暗角 */
     .vignette {
       position: fixed;
       inset: 0;
       z-index: 0;
       pointer-events: none;
-      background: radial-gradient(ellipse at 50% 0%, transparent 55%, rgba(0,0,0,0.45) 100%);
+      background: radial-gradient(ellipse at 50% 0%, transparent 55%, var(--overlay-bg) 100%);
+      transition: background 0.5s ease;
     }
 
     /* ══════════════════════════════════════════
@@ -187,11 +253,11 @@
     .toolbar {
       display: flex;
       align-items: center;
-      gap: 12px;
+      gap: 10px;
       background: var(--bg-surface);
-      border: 1px solid rgba(184, 147, 66, 0.1);
+      border: 1px solid var(--border-gold);
       border-radius: var(--radius-lg);
-      padding: 8px 14px;
+      padding: 8px 12px;
       box-shadow: var(--shadow-card);
     }
 
@@ -213,7 +279,7 @@
     }
     .search-input {
       width: 100%;
-      background: var(--bg-deep);
+      background: var(--bg-input);
       border: 1px solid transparent;
       border-radius: var(--radius-md);
       padding: 9px 14px 9px 38px;
@@ -228,7 +294,6 @@
       border-color: var(--gold-dim);
       box-shadow: 0 0 0 3px rgba(184, 147, 66, 0.06);
     }
-    .search-input:focus ~ .search-icon { color: var(--gold); }
     .search-clear {
       position: absolute;
       right: 8px;
@@ -250,10 +315,10 @@
       display: flex;
       align-items: center;
       gap: 6px;
-      background: var(--bg-deep);
+      background: var(--bg-input);
       border: 1px solid transparent;
       border-radius: var(--radius-md);
-      padding: 9px 14px;
+      padding: 9px 12px;
       font-family: var(--font-body);
       font-size: 13px;
       color: var(--text-secondary);
@@ -286,12 +351,32 @@
     }
     .tag-trigger-caret {
       font-size: 10px;
-      transition: transform var(--transition-fast);
       color: var(--text-muted);
+      transition: transform var(--transition-fast);
     }
-    .tag-trigger.open .tag-trigger-caret {
-      transform: rotate(180deg);
+
+    /* 主题切换按钮 */
+    .theme-toggle {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 36px;
+      height: 36px;
+      background: var(--bg-input);
+      border: 1px solid transparent;
+      border-radius: var(--radius-md);
+      color: var(--text-muted);
+      cursor: pointer;
+      font-size: 16px;
+      transition: all var(--transition-fast);
+      flex-shrink: 0;
+      line-height: 1;
     }
+    .theme-toggle:hover {
+      border-color: var(--gold-dim);
+      color: var(--gold-light);
+    }
+    .theme-toggle:active { transform: scale(0.92); }
 
     /* 活跃筛选标签 */
     .active-filters {
@@ -339,7 +424,7 @@
 
     .card {
       background: var(--bg-surface);
-      border: 1px solid rgba(255, 255, 255, 0.04);
+      border: 1px solid var(--border-card);
       border-radius: var(--radius-card);
       overflow: hidden;
       cursor: pointer;
@@ -368,9 +453,7 @@
       display: block;
       transition: transform 1.2s ease, opacity 0.3s ease;
     }
-    .card:hover .card-cover img {
-      transform: scale(1.04);
-    }
+    .card:hover .card-cover img { transform: scale(1.04); }
     .card-cover-placeholder {
       position: absolute;
       inset: 0;
@@ -381,22 +464,18 @@
       color: var(--text-dim);
       gap: 8px;
     }
-    .card-cover-placeholder-icon {
-      font-size: 36px;
-      opacity: 0.5;
-    }
+    .card-cover-placeholder-icon { font-size: 36px; opacity: 0.5; }
     .card-cover-placeholder-text {
       font-size: 11px;
       letter-spacing: 0.1em;
       font-family: var(--font-heading);
     }
-    /* 封面底部渐变用于标签放置 */
     .card-cover::after {
       content: '';
       position: absolute;
       bottom: 0; left: 0; right: 0;
       height: 48px;
-      background: linear-gradient(to top, rgba(10, 8, 7, 0.7), transparent);
+      background: linear-gradient(to top, var(--cover-gradient), transparent);
       pointer-events: none;
       opacity: 0;
       transition: opacity var(--transition-base);
@@ -473,9 +552,9 @@
       border: 1px solid rgba(184, 147, 66, 0.12);
     }
     .card-tag--flavor {
-      background: rgba(255, 255, 255, 0.03);
+      background: var(--tag-flavor-bg);
       color: var(--text-secondary);
-      border: 1px solid rgba(255, 255, 255, 0.06);
+      border: 1px solid var(--tag-flavor-border);
     }
 
     /* 悬停简介 */
@@ -487,7 +566,7 @@
       width: 20px;
       height: 20px;
       border-radius: 50%;
-      background: rgba(0,0,0,0.6);
+      background: var(--overlay-light);
       backdrop-filter: blur(4px);
       border: 1px solid rgba(255,255,255,0.1);
       display: flex;
@@ -539,7 +618,7 @@
       position: fixed;
       inset: 0;
       z-index: 200;
-      background: rgba(0, 0, 0, 0.7);
+      background: var(--overlay-bg);
       backdrop-filter: blur(4px);
       display: flex;
       align-items: center;
@@ -552,7 +631,7 @@
 
     .modal {
       background: var(--bg-surface);
-      border: 1px solid rgba(184, 147, 66, 0.15);
+      border: 1px solid var(--border-gold-strong);
       border-radius: var(--radius-lg);
       box-shadow: var(--shadow-modal);
       width: 640px;
@@ -570,7 +649,7 @@
       align-items: center;
       justify-content: space-between;
       padding: 18px 24px;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      border-bottom: 1px solid var(--divider);
     }
     .modal-title {
       font-family: var(--font-heading);
@@ -604,7 +683,7 @@
       overflow-y: auto;
     }
     .modal-column + .modal-column {
-      border-left: 1px solid rgba(255, 255, 255, 0.05);
+      border-left: 1px solid var(--divider);
     }
     .modal-column-title {
       font-family: var(--font-heading);
@@ -614,11 +693,7 @@
       margin-bottom: 14px;
       text-transform: uppercase;
     }
-    .modal-tag-list {
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-    }
+    .modal-tag-list { display: flex; flex-direction: column; gap: 4px; }
     .modal-tag-item {
       display: flex;
       align-items: center;
@@ -669,8 +744,9 @@
       justify-content: flex-end;
       gap: 10px;
       padding: 14px 24px;
-      border-top: 1px solid rgba(255, 255, 255, 0.05);
+      border-top: 1px solid var(--divider);
     }
+
     .btn {
       padding: 8px 20px;
       border-radius: var(--radius-md);
@@ -684,9 +760,9 @@
     .btn--ghost {
       background: transparent;
       color: var(--text-secondary);
-      border-color: rgba(255, 255, 255, 0.08);
+      border-color: var(--btn-ghost-border);
     }
-    .btn--ghost:hover { color: var(--text-primary); border-color: rgba(255, 255, 255, 0.18); }
+    .btn--ghost:hover { color: var(--text-primary); border-color: var(--border-medium); }
     .btn--gold {
       background: linear-gradient(to bottom, rgba(184, 147, 66, 0.15), rgba(184, 147, 66, 0.08));
       color: var(--gold-light);
@@ -708,22 +784,10 @@
     }
     .state-message.visible { display: block; }
 
-    .state-icon {
-      font-size: 48px;
-      margin-bottom: 16px;
-      opacity: 0.6;
-    }
-    .state-text {
-      font-size: 15px;
-      color: var(--text-secondary);
-      margin-bottom: 8px;
-    }
-    .state-hint {
-      font-size: 13px;
-      color: var(--text-muted);
-    }
+    .state-icon { font-size: 48px; margin-bottom: 16px; opacity: 0.6; }
+    .state-text { font-size: 15px; color: var(--text-secondary); margin-bottom: 8px; }
+    .state-hint { font-size: 13px; color: var(--text-muted); }
 
-    /* 加载动画 */
     .spinner {
       display: inline-block;
       width: 32px;
@@ -734,7 +798,6 @@
       animation: spin 0.8s linear infinite;
     }
 
-    /* 结果计数 */
     .results-count {
       margin-top: 24px;
       font-size: 12px;
@@ -784,22 +847,14 @@
       from { opacity: 0; transform: scale(0.85); }
       to { opacity: 1; transform: scale(1); }
     }
-    @keyframes spin {
-      to { transform: rotate(360deg); }
-    }
-    @keyframes fadeIn {
-      from { opacity: 0; }
-      to { opacity: 1; }
-    }
+    @keyframes spin { to { transform: rotate(360deg); } }
   </style>
 </head>
 <body>
 
-  <!-- 纹理与暗角 -->
   <div class="texture-overlay" aria-hidden="true"></div>
   <div class="vignette" aria-hidden="true"></div>
 
-  <!-- ═══ 主容器 ═══ -->
   <div class="app">
     <!-- Hero -->
     <header class="hero">
@@ -835,44 +890,39 @@
           <span class="tag-trigger-count" id="flavorTagCount">0</span>
           <span class="tag-trigger-caret">&#9660;</span>
         </button>
+        <button class="theme-toggle" id="themeToggle" aria-label="切换亮色/暗色主题" title="切换主题">
+          &#9788;
+        </button>
       </div>
-      <!-- 活跃筛选标签 -->
       <div class="active-filters" id="activeFilters"></div>
     </div>
 
-    <!-- 结果计数 -->
     <div class="results-count" id="resultsCount"></div>
-
-    <!-- 卡片网格 -->
     <div class="card-grid" id="cardGrid" role="list"></div>
 
-    <!-- 加载态 -->
     <div class="state-message" id="loadingState">
       <div class="spinner"></div>
       <p class="state-text" style="margin-top:20px">正在检视图书馆…</p>
     </div>
 
-    <!-- 空数据态 -->
     <div class="state-message" id="emptyState">
       <div class="state-icon" aria-hidden="true">&#128218;</div>
       <p class="state-text">目录中暂无资源条目</p>
       <p class="state-hint">等待管理员添加第一批模组与资源</p>
     </div>
 
-    <!-- 错误态 -->
     <div class="state-message" id="errorState">
       <div class="state-icon" aria-hidden="true">&#9888;</div>
       <p class="state-text" id="errorText">无法连接到数据服务</p>
       <p class="state-hint">请确认后端服务已启动</p>
     </div>
 
-    <!-- 页脚 -->
     <footer class="site-footer">
       Daggerheart Marketplace &mdash; 仅做目录索引，点击卡片跳转至外部资源
     </footer>
   </div>
 
-  <!-- ═══ 标签选择弹窗 ═══ -->
+  <!-- 标签弹窗 -->
   <div class="modal-overlay" id="tagModal" role="dialog" aria-modal="true" aria-label="标签筛选">
     <div class="modal">
       <div class="modal-header">
@@ -880,12 +930,10 @@
         <button class="modal-close" id="tagModalClose" aria-label="关闭">&times;</button>
       </div>
       <div class="modal-body">
-        <!-- 内容标签列 -->
         <div class="modal-column">
           <div class="modal-column-title">内容标签</div>
           <div class="modal-tag-list" id="modalContentTags"></div>
         </div>
-        <!-- 风味标签列 -->
         <div class="modal-column">
           <div class="modal-column-title">风味标签</div>
           <div class="modal-tag-list" id="modalFlavorTags"></div>
@@ -898,17 +946,38 @@
     </div>
   </div>
 
-  <!-- ═══ JavaScript ═══ -->
   <script>
   (function () {
     'use strict';
 
-    /* ── 配置 ── */
-    const API_BASE = (() => {
-      // 如果页面从 file:// 加载，回退到 localhost:5000
-      if (window.location.protocol === 'file:') return 'http://localhost:5000';
-      return ''; // 同源
-    })();
+    const API_BASE = window.location.protocol === 'file:' ? 'http://localhost:5000' : '';
+
+    /* ── 主题管理 ── */
+    const THEME_KEY = 'dh-marketplace-theme'; // 与管理页共享
+
+    function getSavedTheme() {
+      try { return localStorage.getItem(THEME_KEY); } catch { return null; }
+    }
+    function saveTheme(theme) {
+      try { localStorage.setItem(THEME_KEY, theme); } catch {}
+    }
+    function applyTheme(theme) {
+      document.documentElement.setAttribute('data-theme', theme);
+      const btn = document.getElementById('themeToggle');
+      if (btn) btn.innerHTML = theme === 'light' ? '&#9790;' : '&#9788;';
+    }
+    function toggleTheme() {
+      const current = document.documentElement.getAttribute('data-theme');
+      const next = current === 'light' ? 'dark' : 'light';
+      applyTheme(next);
+      saveTheme(next);
+    }
+
+    // 初始化主题
+    const saved = getSavedTheme();
+    if (saved) applyTheme(saved);
+
+    document.getElementById('themeToggle').addEventListener('click', toggleTheme);
 
     /* ── 状态 ── */
     const state = {
@@ -917,16 +986,14 @@
       searchQuery: '',
       selectedContentTags: [],
       selectedFlavorTags: [],
-      pendingContentTags: [],  // 弹窗中暂未应用的
+      pendingContentTags: [],
       pendingFlavorTags: [],
       loading: true,
       error: null,
       tagModalOpen: false,
     };
 
-    /* ── DOM 引用 ── */
     const $ = (sel) => document.querySelector(sel);
-    const $$ = (sel) => document.querySelectorAll(sel);
 
     const dom = {
       searchInput: $('#searchInput'),
@@ -950,12 +1017,9 @@
       tagModalApply: $('#tagModalApply'),
     };
 
-    /* ── API ── */
     async function apiFetch(path) {
-      const res = await fetch(API_BASE + path, {
-        headers: { 'Accept': 'application/json' },
-      });
-      if (!res.ok) throw new Error(`API ${res.status}: ${res.statusText}`);
+      const res = await fetch(API_BASE + path, { headers: { 'Accept': 'application/json' } });
+      if (!res.ok) throw new Error(`API ${res.status}`);
       return res.json();
     }
 
@@ -973,67 +1037,43 @@
       }
     }
 
-    /* ── 筛选逻辑 ── */
     function getFilteredEntries() {
       const q = state.searchQuery.trim().toLowerCase();
-      const selContent = state.selectedContentTags;
-      const selFlavor = state.selectedFlavorTags;
+      const selC = state.selectedContentTags;
+      const selF = state.selectedFlavorTags;
 
       return state.entries.filter(entry => {
-        // 全文搜索
         if (q) {
-          const searchText = [
-            entry.title, entry.author, entry.summary,
-            ...(entry.contentTags || []),
-            ...(entry.flavorTags || []),
-          ].join(' ').toLowerCase();
-          if (!searchText.includes(q)) return false;
+          const hay = [entry.title, entry.author, entry.summary,
+            ...(entry.contentTags||[]), ...(entry.flavorTags||[])].join(' ').toLowerCase();
+          if (!hay.includes(q)) return false;
         }
-
-        // 内容标签筛选 (组内 OR)
-        if (selContent.length > 0) {
-          const entryContent = entry.contentTags || [];
-          if (!selContent.some(t => entryContent.includes(t))) return false;
-        }
-
-        // 风味标签筛选 (组内 OR)
-        if (selFlavor.length > 0) {
-          const entryFlavor = entry.flavorTags || [];
-          if (!selFlavor.some(t => entryFlavor.includes(t))) return false;
-        }
-
+        if (selC.length && !selC.some(t => (entry.contentTags||[]).includes(t))) return false;
+        if (selF.length && !selF.some(t => (entry.flavorTags||[]).includes(t))) return false;
         return true;
       });
     }
 
-    /* ── 渲染 ── */
     function renderAll() {
       renderActiveFilters();
       renderTagTriggerStates();
       renderCardGrid();
-      renderTagModal(); // 如果弹窗开着，刷新内容
+      renderTagModal();
     }
 
     function renderTagTriggerStates() {
       const sc = state.selectedContentTags.length;
       const sf = state.selectedFlavorTags.length;
-
       dom.contentTagCount.textContent = sc || '0';
       dom.flavorTagCount.textContent = sf || '0';
-
       dom.contentTagTrigger.classList.toggle('active', sc > 0);
       dom.flavorTagTrigger.classList.toggle('active', sf > 0);
     }
 
     function renderActiveFilters() {
       const chips = [];
-
-      state.selectedContentTags.forEach(tag => {
-        chips.push({ type: 'content', tag, label: tag });
-      });
-      state.selectedFlavorTags.forEach(tag => {
-        chips.push({ type: 'flavor', tag, label: tag });
-      });
+      state.selectedContentTags.forEach(t => chips.push({ type:'content', tag:t, label:t }));
+      state.selectedFlavorTags.forEach(t => chips.push({ type:'flavor', tag:t, label:t }));
 
       dom.activeFilters.innerHTML = chips.map(c =>
         `<span class="active-filter-chip" data-type="${c.type}" data-tag="${escAttr(c.tag)}">
@@ -1041,16 +1081,12 @@
         </span>`
       ).join('');
 
-      // 点击 chip 移除
       dom.activeFilters.querySelectorAll('.active-filter-chip').forEach(chip => {
         chip.addEventListener('click', () => {
           const type = chip.dataset.type;
           const tag = chip.dataset.tag;
-          if (type === 'content') {
-            state.selectedContentTags = state.selectedContentTags.filter(t => t !== tag);
-          } else {
-            state.selectedFlavorTags = state.selectedFlavorTags.filter(t => t !== tag);
-          }
+          if (type === 'content') state.selectedContentTags = state.selectedContentTags.filter(t => t !== tag);
+          else state.selectedFlavorTags = state.selectedFlavorTags.filter(t => t !== tag);
           syncPendingFromSelected();
           renderAll();
         });
@@ -1060,21 +1096,15 @@
     function renderCardGrid() {
       const filtered = getFilteredEntries();
 
-      // 更新结果计数
       if (!state.loading && state.entries.length > 0) {
         const total = state.entries.length;
         const shown = filtered.length;
-        if (shown === total) {
-          dom.resultsCount.textContent = `共 ${total} 个条目`;
-        } else {
-          dom.resultsCount.textContent = `筛选出 ${shown} / ${total} 个条目`;
-        }
+        dom.resultsCount.textContent = shown === total ? `共 ${total} 个条目` : `筛选出 ${shown} / ${total} 个条目`;
         dom.resultsCount.classList.add('visible');
       } else {
         dom.resultsCount.classList.remove('visible');
       }
 
-      // 无筛选结果但总数据不为空
       if (!state.loading && state.entries.length > 0 && filtered.length === 0) {
         dom.cardGrid.innerHTML = '';
         dom.emptyState.classList.add('visible');
@@ -1082,49 +1112,43 @@
         dom.emptyState.querySelector('.state-hint').textContent = '尝试调整搜索词或标签筛选';
         return;
       }
-
       dom.emptyState.classList.remove('visible');
 
       dom.cardGrid.innerHTML = filtered.map((entry, idx) => {
         const hasSummary = !!(entry.summary && entry.summary.trim());
-        const isRecommended = entry.recommendValue > 0;
-        const contentTags = entry.contentTags || [];
-        const flavorTags = entry.flavorTags || [];
+        const isRec = entry.recommendValue > 0;
+        const cTags = entry.contentTags || [];
+        const fTags = entry.flavorTags || [];
 
         return `
-        <div class="card ${isRecommended ? 'recommended' : ''} ${hasSummary ? 'has-summary' : ''}"
+        <div class="card ${isRec?'recommended':''} ${hasSummary?'has-summary':''}"
              role="listitem"
-             style="animation-delay: ${Math.min(idx * 0.04, 0.6)}s"
-             data-href="${escAttr(entry.targetUrl)}"
-             data-id="${escAttr(entry.id)}">
+             style="animation-delay:${Math.min(idx*0.04,0.6)}s"
+             data-href="${escAttr(entry.targetUrl)}" data-id="${escAttr(entry.id)}">
           <div class="card-cover">
-            <img src="${escAttr(entry.coverPath)}"
-                 alt="${escAttr(entry.title)} 封面"
-                 loading="lazy"
+            <img src="${escAttr(entry.coverPath)}" alt="${escAttr(entry.title)} 封面" loading="lazy"
                  onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
             <div class="card-cover-placeholder" style="display:none">
               <span class="card-cover-placeholder-icon">&#9876;</span>
               <span class="card-cover-placeholder-text">NO COVER</span>
             </div>
-            ${isRecommended ? '<span class="card-badge">&#9733; 推荐</span>' : ''}
-            ${hasSummary ? '<span class="card-summary-indicator" aria-hidden="true">i</span>' : ''}
-            ${hasSummary ? `<div class="card-summary-tooltip">${escHtml(entry.summary)}</div>` : ''}
+            ${isRec?'<span class="card-badge">&#9733; 推荐</span>':''}
+            ${hasSummary?'<span class="card-summary-indicator" aria-hidden="true">i</span>':''}
+            ${hasSummary?`<div class="card-summary-tooltip">${escHtml(entry.summary)}</div>`:''}
           </div>
           <div class="card-body">
             <div class="card-title">${escHtml(entry.title)}</div>
             <div class="card-author">${escHtml(entry.author)}</div>
             <div class="card-tags">
-              ${contentTags.map(t => `<span class="card-tag card-tag--content">${escHtml(t)}</span>`).join('')}
-              ${flavorTags.map(t => `<span class="card-tag card-tag--flavor">${escHtml(t)}</span>`).join('')}
+              ${cTags.map(t=>`<span class="card-tag card-tag--content">${escHtml(t)}</span>`).join('')}
+              ${fTags.map(t=>`<span class="card-tag card-tag--flavor">${escHtml(t)}</span>`).join('')}
             </div>
           </div>
         </div>`;
       }).join('');
 
-      // 卡片点击 → 跳转外链（排除标签点击）
       dom.cardGrid.querySelectorAll('.card').forEach(card => {
         card.addEventListener('click', (e) => {
-          // 不要拦截标签上的点击（虽然标签不可交互，但防止意外）
           const href = card.dataset.href;
           if (href) window.open(href, '_blank', 'noopener');
         });
@@ -1132,76 +1156,44 @@
     }
 
     function renderTagModal() {
-      // 内容标签
-      const contentTags = state.tags.contentTags || [];
-      dom.modalContentTags.innerHTML = contentTags.length === 0
+      const cTags = state.tags.contentTags || [];
+      dom.modalContentTags.innerHTML = cTags.length === 0
         ? '<div class="modal-tag-empty">暂无内容标签</div>'
-        : contentTags.map(tc => {
-            const selected = state.pendingContentTags.includes(tc.tag);
-            return `
-            <div class="modal-tag-item ${selected ? 'selected' : ''}"
-                 data-type="content" data-tag="${escAttr(tc.tag)}">
-              <span>${escHtml(tc.tag)}</span>
-              <span class="modal-tag-count">${tc.count}</span>
-            </div>`;
+        : cTags.map(tc => {
+            const sel = state.pendingContentTags.includes(tc.tag);
+            return `<div class="modal-tag-item ${sel?'selected':''}" data-type="content" data-tag="${escAttr(tc.tag)}">
+              <span>${escHtml(tc.tag)}</span><span class="modal-tag-count">${tc.count}</span></div>`;
           }).join('');
 
-      // 风味标签
-      const flavorTags = state.tags.flavorTags || [];
-      dom.modalFlavorTags.innerHTML = flavorTags.length === 0
+      const fTags = state.tags.flavorTags || [];
+      dom.modalFlavorTags.innerHTML = fTags.length === 0
         ? '<div class="modal-tag-empty">暂无风味标签</div>'
-        : flavorTags.map(tc => {
-            const selected = state.pendingFlavorTags.includes(tc.tag);
-            return `
-            <div class="modal-tag-item ${selected ? 'selected' : ''}"
-                 data-type="flavor" data-tag="${escAttr(tc.tag)}">
-              <span>${escHtml(tc.tag)}</span>
-              <span class="modal-tag-count">${tc.count}</span>
-            </div>`;
+        : fTags.map(tc => {
+            const sel = state.pendingFlavorTags.includes(tc.tag);
+            return `<div class="modal-tag-item ${sel?'selected':''}" data-type="flavor" data-tag="${escAttr(tc.tag)}">
+              <span>${escHtml(tc.tag)}</span><span class="modal-tag-count">${tc.count}</span></div>`;
           }).join('');
 
-      // 标签点击切换
       dom.tagModal.querySelectorAll('.modal-tag-item').forEach(item => {
         item.addEventListener('click', () => {
-          const type = item.dataset.type;
-          const tag = item.dataset.tag;
-          if (type === 'content') {
-            togglePendingTag(state.pendingContentTags, tag);
-          } else {
-            togglePendingTag(state.pendingFlavorTags, tag);
-          }
+          const arr = item.dataset.type === 'content' ? state.pendingContentTags : state.pendingFlavorTags;
+          const idx = arr.indexOf(item.dataset.tag);
+          if (idx === -1) arr.push(item.dataset.tag); else arr.splice(idx, 1);
           renderTagModal();
         });
       });
     }
 
-    function togglePendingTag(arr, tag) {
-      const idx = arr.indexOf(tag);
-      if (idx === -1) arr.push(tag);
-      else arr.splice(idx, 1);
-    }
-
-    /* ── 状态显示切换 ── */
     function updateDisplayMode() {
       dom.loadingState.classList.toggle('visible', state.loading);
       dom.errorState.classList.toggle('visible', !!state.error && !state.loading);
-
-      if (state.error) {
-        dom.errorText.textContent = state.error;
-      }
-
-      const hasData = state.entries.length > 0;
-      dom.cardGrid.style.display = (!state.loading && !state.error && hasData) ? '' : 'none';
-
-      // 空数据提示由 renderCardGrid 处理
+      if (state.error) dom.errorText.textContent = state.error;
+      dom.cardGrid.style.display = (!state.loading && !state.error && state.entries.length > 0) ? '' : 'none';
       if (!state.loading && !state.error && state.entries.length === 0) {
         dom.emptyState.classList.add('visible');
-        dom.emptyState.querySelector('.state-text').textContent = '目录中暂无资源条目';
-        dom.emptyState.querySelector('.state-hint').textContent = '等待管理员添加第一批模组与资源';
       }
     }
 
-    /* ── 弹窗控制 ── */
     function openTagModal() {
       state.pendingContentTags = [...state.selectedContentTags];
       state.pendingFlavorTags = [...state.selectedFlavorTags];
@@ -1227,20 +1219,13 @@
       state.pendingFlavorTags = [...state.selectedFlavorTags];
     }
 
-    /* ── 事件绑定 ── */
-    // 搜索
+    // 事件绑定
     let searchTimer;
     dom.searchInput.addEventListener('input', () => {
-      const val = dom.searchInput.value;
-      dom.searchClear.classList.toggle('visible', val.length > 0);
-
+      dom.searchClear.classList.toggle('visible', dom.searchInput.value.length > 0);
       clearTimeout(searchTimer);
-      searchTimer = setTimeout(() => {
-        state.searchQuery = val;
-        renderAll();
-      }, 200);
+      searchTimer = setTimeout(() => { state.searchQuery = dom.searchInput.value; renderAll(); }, 200);
     });
-
     dom.searchClear.addEventListener('click', () => {
       dom.searchInput.value = '';
       dom.searchClear.classList.remove('visible');
@@ -1249,44 +1234,28 @@
       dom.searchInput.focus();
     });
 
-    // 标签触发器
-    dom.contentTagTrigger.addEventListener('click', () => openTagModal());
-    dom.flavorTagTrigger.addEventListener('click', () => openTagModal());
-
-    // 弹窗
+    dom.contentTagTrigger.addEventListener('click', openTagModal);
+    dom.flavorTagTrigger.addEventListener('click', openTagModal);
     dom.tagModalClose.addEventListener('click', () => closeTagModal(false));
-    dom.tagModal.addEventListener('click', (e) => {
-      if (e.target === dom.tagModal) closeTagModal(false);
-    });
-    dom.tagModalClear.addEventListener('click', () => {
-      state.pendingContentTags = [];
-      state.pendingFlavorTags = [];
-      renderTagModal();
-    });
+    dom.tagModal.addEventListener('click', (e) => { if (e.target === dom.tagModal) closeTagModal(false); });
+    dom.tagModalClear.addEventListener('click', () => { state.pendingContentTags = []; state.pendingFlavorTags = []; renderTagModal(); });
     dom.tagModalApply.addEventListener('click', () => closeTagModal(true));
 
-    // 键盘
     document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape' && state.tagModalOpen) {
-        closeTagModal(false);
-      }
+      if (e.key === 'Escape' && state.tagModalOpen) closeTagModal(false);
     });
 
-    /* ── 工具函数 ── */
-    function escHtml(str) {
-      if (!str) return '';
-      const div = document.createElement('div');
-      div.appendChild(document.createTextNode(str));
-      return div.innerHTML;
+    function escHtml(s) {
+      if (!s) return '';
+      const d = document.createElement('div');
+      d.appendChild(document.createTextNode(s));
+      return d.innerHTML;
+    }
+    function escAttr(s) {
+      if (!s) return '';
+      return s.replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
     }
 
-    function escAttr(str) {
-      if (!str) return '';
-      return str.replace(/&/g, '&amp;').replace(/"/g, '&quot;')
-                .replace(/</g, '&lt;').replace(/>/g, '&gt;');
-    }
-
-    /* ── 初始化 ── */
     async function init() {
       updateDisplayMode();
       await loadData();
@@ -1297,6 +1266,5 @@
     init();
   })();
   </script>
-
 </body>
 </html>
