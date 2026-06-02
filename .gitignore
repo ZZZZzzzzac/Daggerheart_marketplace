@@ -1,0 +1,9 @@
+__pycache__/
+*.pyc
+server/tests/.tmp/
+
+data/runtime/entries.json
+data/runtime/covers/*
+!data/runtime/covers/.gitkeep
+data/runtime/secrets/*
+!data/runtime/secrets/.gitkeep
