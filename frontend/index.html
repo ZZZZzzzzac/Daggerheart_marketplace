@@ -4,11 +4,1299 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Daggerheart Marketplace</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Cinzel+Decorative:wght@700;900&display=swap" rel="stylesheet">
+  <style>
+    /* ══════════════════════════════════════════
+       CSS Variables & Design Tokens
+       ══════════════════════════════════════════ */
+    :root {
+      --bg-deepest: #0a0807;
+      --bg-deep: #12100d;
+      --bg-surface: #1b1713;
+      --bg-elevated: #252019;
+      --bg-highlight: #302922;
+
+      --gold: #b89342;
+      --gold-light: #c9a54e;
+      --gold-bright: #ddc078;
+      --gold-dim: #6b5a32;
+      --gold-dark: #3d3018;
+      --gold-pale: #f0e3c0;
+
+      --crimson: #843434;
+      --crimson-light: #a84444;
+      --crimson-glow: rgba(160, 60, 60, 0.35);
+
+      --text-primary: #ddd2bc;
+      --text-secondary: #a09885;
+      --text-muted: #6b6354;
+      --text-dim: #484133;
+
+      --font-display: 'Cinzel Decorative', 'Cinzel', 'Noto Serif SC', 'Source Han Serif SC', 'STSong', serif;
+      --font-heading: 'Cinzel', 'Noto Serif SC', 'Source Han Serif SC', serif;
+      --font-body: 'Noto Serif SC', 'Source Han Serif SC', 'STSong', 'SimSun', Georgia, serif;
+
+      --radius-sm: 3px;
+      --radius-md: 6px;
+      --radius-lg: 10px;
+      --radius-card: 4px;
+
+      --shadow-card: 0 2px 12px rgba(0, 0, 0, 0.5);
+      --shadow-card-hover: 0 6px 28px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(184, 147, 66, 0.15);
+      --shadow-glow-gold: 0 0 20px rgba(184, 147, 66, 0.15);
+      --shadow-modal: 0 16px 64px rgba(0, 0, 0, 0.7);
+
+      --transition-fast: 0.15s ease;
+      --transition-base: 0.25s ease;
+      --transition-slow: 0.4s ease;
+
+      --max-width: 1320px;
+      --toolbar-height: 56px;
+    }
+
+    /* ══════════════════════════════════════════
+       Reset & Base
+       ══════════════════════════════════════════ */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html {
+      font-size: 16px;
+      scroll-behavior: smooth;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+
+    body {
+      font-family: var(--font-body);
+      background: var(--bg-deepest);
+      color: var(--text-primary);
+      min-height: 100vh;
+      line-height: 1.6;
+      overflow-x: hidden;
+    }
+
+    /* ══════════════════════════════════════════
+       Noise & Texture Overlay
+       ══════════════════════════════════════════ */
+    .texture-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      pointer-events: none;
+      opacity: 0.035;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='1'/%3E%3C/svg%3E");
+      background-repeat: repeat;
+      background-size: 180px 180px;
+    }
+
+    /* 暗角 */
+    .vignette {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      pointer-events: none;
+      background: radial-gradient(ellipse at 50% 0%, transparent 55%, rgba(0,0,0,0.45) 100%);
+    }
+
+    /* ══════════════════════════════════════════
+       App Container
+       ══════════════════════════════════════════ */
+    .app {
+      position: relative;
+      z-index: 1;
+      max-width: var(--max-width);
+      margin: 0 auto;
+      padding: 0 32px 80px;
+    }
+
+    /* ══════════════════════════════════════════
+       Hero Section
+       ══════════════════════════════════════════ */
+    .hero {
+      text-align: center;
+      padding: 72px 0 56px;
+      position: relative;
+    }
+
+    .hero-ornament {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+    .hero-ornament::before,
+    .hero-ornament::after {
+      content: '';
+      height: 1px;
+      width: 80px;
+      background: linear-gradient(to right, transparent, var(--gold-dim), transparent);
+    }
+    .hero-ornament::before { background: linear-gradient(to left, transparent, var(--gold-dim), transparent); }
+    .hero-ornament-icon {
+      color: var(--gold-dim);
+      font-size: 14px;
+      letter-spacing: 6px;
+    }
+
+    .hero-title {
+      font-family: var(--font-display);
+      font-size: clamp(28px, 4.5vw, 48px);
+      font-weight: 700;
+      color: var(--gold-pale);
+      letter-spacing: 0.06em;
+      line-height: 1.25;
+      text-shadow: 0 2px 12px rgba(184, 147, 66, 0.12);
+    }
+    .hero-title em {
+      font-style: normal;
+      color: var(--gold-light);
+    }
+
+    .hero-subtitle {
+      margin-top: 12px;
+      font-size: 15px;
+      color: var(--text-secondary);
+      letter-spacing: 0.08em;
+      font-family: var(--font-heading);
+      font-weight: 400;
+    }
+
+    .hero-divider {
+      margin: 32px auto 0;
+      width: 120px;
+      height: 1px;
+      background: linear-gradient(to right, transparent, var(--gold-dim), transparent);
+    }
+
+    /* ══════════════════════════════════════════
+       Toolbar (Frozen / Sticky)
+       ══════════════════════════════════════════ */
+    .toolbar-wrapper {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      padding: 12px 0;
+      background: linear-gradient(to bottom, var(--bg-deepest) 60%, transparent);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+    }
+
+    .toolbar {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      background: var(--bg-surface);
+      border: 1px solid rgba(184, 147, 66, 0.1);
+      border-radius: var(--radius-lg);
+      padding: 8px 14px;
+      box-shadow: var(--shadow-card);
+    }
+
+    /* 搜索框 */
+    .search-box {
+      flex: 1;
+      min-width: 0;
+      position: relative;
+      display: flex;
+      align-items: center;
+    }
+    .search-icon {
+      position: absolute;
+      left: 12px;
+      color: var(--text-muted);
+      font-size: 15px;
+      pointer-events: none;
+      transition: color var(--transition-base);
+    }
+    .search-input {
+      width: 100%;
+      background: var(--bg-deep);
+      border: 1px solid transparent;
+      border-radius: var(--radius-md);
+      padding: 9px 14px 9px 38px;
+      font-family: var(--font-body);
+      font-size: 14px;
+      color: var(--text-primary);
+      outline: none;
+      transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+    }
+    .search-input::placeholder { color: var(--text-muted); }
+    .search-input:focus {
+      border-color: var(--gold-dim);
+      box-shadow: 0 0 0 3px rgba(184, 147, 66, 0.06);
+    }
+    .search-input:focus ~ .search-icon { color: var(--gold); }
+    .search-clear {
+      position: absolute;
+      right: 8px;
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      font-size: 16px;
+      padding: 4px 8px;
+      border-radius: var(--radius-sm);
+      display: none;
+      transition: color var(--transition-fast);
+    }
+    .search-clear:hover { color: var(--text-primary); }
+    .search-clear.visible { display: block; }
+
+    /* 标签触发器 */
+    .tag-trigger {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--bg-deep);
+      border: 1px solid transparent;
+      border-radius: var(--radius-md);
+      padding: 9px 14px;
+      font-family: var(--font-body);
+      font-size: 13px;
+      color: var(--text-secondary);
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all var(--transition-fast);
+      user-select: none;
+    }
+    .tag-trigger:hover {
+      border-color: var(--gold-dim);
+      color: var(--text-primary);
+    }
+    .tag-trigger.active {
+      border-color: var(--gold);
+      color: var(--gold-light);
+      box-shadow: 0 0 8px rgba(184, 147, 66, 0.08);
+    }
+    .tag-trigger-count {
+      font-size: 11px;
+      color: var(--gold-dim);
+      background: var(--gold-dark);
+      padding: 1px 6px;
+      border-radius: 10px;
+      min-width: 18px;
+      text-align: center;
+    }
+    .tag-trigger.active .tag-trigger-count {
+      color: var(--gold-bright);
+      background: rgba(184, 147, 66, 0.2);
+    }
+    .tag-trigger-caret {
+      font-size: 10px;
+      transition: transform var(--transition-fast);
+      color: var(--text-muted);
+    }
+    .tag-trigger.open .tag-trigger-caret {
+      transform: rotate(180deg);
+    }
+
+    /* 活跃筛选标签 */
+    .active-filters {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 8px;
+      min-height: 0;
+    }
+    .active-filter-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      background: rgba(184, 147, 66, 0.08);
+      border: 1px solid rgba(184, 147, 66, 0.18);
+      border-radius: 20px;
+      padding: 4px 12px;
+      font-size: 12px;
+      color: var(--gold-light);
+      cursor: pointer;
+      transition: all var(--transition-fast);
+      animation: chipIn 0.2s ease;
+    }
+    .active-filter-chip:hover {
+      background: rgba(184, 147, 66, 0.15);
+      border-color: var(--gold);
+    }
+    .active-filter-chip-remove {
+      font-size: 14px;
+      line-height: 1;
+      opacity: 0.6;
+      transition: opacity var(--transition-fast);
+    }
+    .active-filter-chip:hover .active-filter-chip-remove { opacity: 1; }
+
+    /* ══════════════════════════════════════════
+       Card Grid
+       ══════════════════════════════════════════ */
+    .card-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(268px, 1fr));
+      gap: 24px;
+      margin-top: 28px;
+    }
+
+    .card {
+      background: var(--bg-surface);
+      border: 1px solid rgba(255, 255, 255, 0.04);
+      border-radius: var(--radius-card);
+      overflow: hidden;
+      cursor: pointer;
+      transition: transform var(--transition-base), box-shadow var(--transition-base), border-color var(--transition-base);
+      position: relative;
+      animation: cardEnter 0.45s ease both;
+    }
+    .card:hover {
+      transform: translateY(-4px);
+      box-shadow: var(--shadow-card-hover);
+      border-color: rgba(184, 147, 66, 0.2);
+    }
+    .card:active { transform: translateY(-1px); }
+
+    /* 封面区域 */
+    .card-cover {
+      position: relative;
+      aspect-ratio: 3 / 4;
+      background: var(--bg-deep);
+      overflow: hidden;
+    }
+    .card-cover img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+      transition: transform 1.2s ease, opacity 0.3s ease;
+    }
+    .card:hover .card-cover img {
+      transform: scale(1.04);
+    }
+    .card-cover-placeholder {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      color: var(--text-dim);
+      gap: 8px;
+    }
+    .card-cover-placeholder-icon {
+      font-size: 36px;
+      opacity: 0.5;
+    }
+    .card-cover-placeholder-text {
+      font-size: 11px;
+      letter-spacing: 0.1em;
+      font-family: var(--font-heading);
+    }
+    /* 封面底部渐变用于标签放置 */
+    .card-cover::after {
+      content: '';
+      position: absolute;
+      bottom: 0; left: 0; right: 0;
+      height: 48px;
+      background: linear-gradient(to top, rgba(10, 8, 7, 0.7), transparent);
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity var(--transition-base);
+    }
+    .card:hover .card-cover::after { opacity: 1; }
+
+    /* 推荐徽章 */
+    .card-badge {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      background: linear-gradient(135deg, var(--crimson-light), var(--crimson));
+      color: #f0d0d0;
+      font-size: 10px;
+      font-family: var(--font-heading);
+      letter-spacing: 0.08em;
+      padding: 3px 10px;
+      border-radius: 2px;
+      box-shadow: 0 2px 10px var(--crimson-glow);
+      z-index: 2;
+      opacity: 0;
+      transform: translateY(-4px);
+      transition: all var(--transition-base);
+    }
+    .card.recommended .card-badge { opacity: 1; transform: translateY(0); }
+
+    /* 卡片信息 */
+    .card-body {
+      padding: 14px 16px 16px;
+    }
+    .card-title {
+      font-family: var(--font-heading);
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--text-primary);
+      line-height: 1.35;
+      margin-bottom: 6px;
+      letter-spacing: 0.02em;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+    .card-author {
+      font-size: 12px;
+      color: var(--text-secondary);
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .card-author::before {
+      content: '';
+      display: inline-block;
+      width: 8px;
+      height: 1px;
+      background: var(--text-muted);
+    }
+    .card-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+    }
+    .card-tag {
+      font-size: 11px;
+      padding: 2px 8px;
+      border-radius: 2px;
+      font-family: var(--font-body);
+      letter-spacing: 0.03em;
+    }
+    .card-tag--content {
+      background: rgba(184, 147, 66, 0.08);
+      color: var(--gold-light);
+      border: 1px solid rgba(184, 147, 66, 0.12);
+    }
+    .card-tag--flavor {
+      background: rgba(255, 255, 255, 0.03);
+      color: var(--text-secondary);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    /* 悬停简介 */
+    .card-summary-indicator {
+      position: absolute;
+      bottom: 10px;
+      left: 12px;
+      z-index: 2;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: rgba(0,0,0,0.6);
+      backdrop-filter: blur(4px);
+      border: 1px solid rgba(255,255,255,0.1);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      color: var(--text-secondary);
+      opacity: 0;
+      transition: opacity var(--transition-base);
+    }
+    .card.has-summary .card-summary-indicator { opacity: 0.8; }
+
+    .card-summary-tooltip {
+      position: absolute;
+      bottom: calc(100% + 8px);
+      left: 50%;
+      transform: translateX(-50%) translateY(4px);
+      background: var(--bg-elevated);
+      border: 1px solid var(--gold-dim);
+      border-radius: var(--radius-md);
+      padding: 10px 14px;
+      font-size: 12px;
+      color: var(--text-primary);
+      line-height: 1.5;
+      max-width: 260px;
+      width: max-content;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.6);
+      opacity: 0;
+      pointer-events: none;
+      transition: all var(--transition-base);
+      z-index: 10;
+      text-align: left;
+    }
+    .card-summary-tooltip::after {
+      content: '';
+      position: absolute;
+      top: 100%;
+      left: 50%;
+      transform: translateX(-50%);
+      border: 6px solid transparent;
+      border-top-color: var(--gold-dim);
+    }
+    .card:hover .card-summary-tooltip { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+    /* ══════════════════════════════════════════
+       Tag Popup Modal
+       ══════════════════════════════════════════ */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 200;
+      background: rgba(0, 0, 0, 0.7);
+      backdrop-filter: blur(4px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity var(--transition-slow);
+    }
+    .modal-overlay.visible { opacity: 1; pointer-events: all; }
+
+    .modal {
+      background: var(--bg-surface);
+      border: 1px solid rgba(184, 147, 66, 0.15);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-modal);
+      width: 640px;
+      max-width: 92vw;
+      max-height: 80vh;
+      display: flex;
+      flex-direction: column;
+      transform: translateY(12px) scale(0.97);
+      transition: transform var(--transition-slow);
+    }
+    .modal-overlay.visible .modal { transform: translateY(0) scale(1); }
+
+    .modal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 18px 24px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    }
+    .modal-title {
+      font-family: var(--font-heading);
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--text-primary);
+      letter-spacing: 0.04em;
+    }
+    .modal-close {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      font-size: 20px;
+      cursor: pointer;
+      padding: 4px 8px;
+      border-radius: var(--radius-sm);
+      transition: color var(--transition-fast);
+      line-height: 1;
+    }
+    .modal-close:hover { color: var(--text-primary); }
+
+    .modal-body {
+      display: flex;
+      flex: 1;
+      overflow: hidden;
+      min-height: 0;
+    }
+    .modal-column {
+      flex: 1;
+      padding: 20px 24px;
+      overflow-y: auto;
+    }
+    .modal-column + .modal-column {
+      border-left: 1px solid rgba(255, 255, 255, 0.05);
+    }
+    .modal-column-title {
+      font-family: var(--font-heading);
+      font-size: 12px;
+      color: var(--text-muted);
+      letter-spacing: 0.1em;
+      margin-bottom: 14px;
+      text-transform: uppercase;
+    }
+    .modal-tag-list {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .modal-tag-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 12px;
+      border-radius: var(--radius-md);
+      cursor: pointer;
+      transition: all var(--transition-fast);
+      font-size: 13px;
+      color: var(--text-secondary);
+      border: 1px solid transparent;
+    }
+    .modal-tag-item:hover {
+      background: var(--bg-elevated);
+      color: var(--text-primary);
+    }
+    .modal-tag-item.selected {
+      background: rgba(184, 147, 66, 0.08);
+      border-color: rgba(184, 147, 66, 0.2);
+      color: var(--gold-light);
+    }
+    .modal-tag-item.selected::before {
+      content: '◆';
+      font-size: 8px;
+      margin-right: 8px;
+      color: var(--gold);
+    }
+    .modal-tag-count {
+      font-size: 11px;
+      color: var(--text-muted);
+      background: var(--bg-deep);
+      padding: 2px 8px;
+      border-radius: 10px;
+    }
+    .modal-tag-item.selected .modal-tag-count {
+      color: var(--gold-dim);
+      background: var(--gold-dark);
+    }
+    .modal-tag-empty {
+      font-size: 13px;
+      color: var(--text-muted);
+      text-align: center;
+      padding: 24px 0;
+    }
+
+    .modal-footer {
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+      padding: 14px 24px;
+      border-top: 1px solid rgba(255, 255, 255, 0.05);
+    }
+    .btn {
+      padding: 8px 20px;
+      border-radius: var(--radius-md);
+      font-family: var(--font-body);
+      font-size: 13px;
+      cursor: pointer;
+      transition: all var(--transition-fast);
+      border: 1px solid transparent;
+      letter-spacing: 0.03em;
+    }
+    .btn--ghost {
+      background: transparent;
+      color: var(--text-secondary);
+      border-color: rgba(255, 255, 255, 0.08);
+    }
+    .btn--ghost:hover { color: var(--text-primary); border-color: rgba(255, 255, 255, 0.18); }
+    .btn--gold {
+      background: linear-gradient(to bottom, rgba(184, 147, 66, 0.15), rgba(184, 147, 66, 0.08));
+      color: var(--gold-light);
+      border-color: rgba(184, 147, 66, 0.25);
+    }
+    .btn--gold:hover {
+      background: linear-gradient(to bottom, rgba(184, 147, 66, 0.25), rgba(184, 147, 66, 0.15));
+      border-color: var(--gold);
+      color: var(--gold-bright);
+    }
+
+    /* ══════════════════════════════════════════
+       States: Loading, Empty, Error
+       ══════════════════════════════════════════ */
+    .state-message {
+      text-align: center;
+      padding: 80px 32px;
+      display: none;
+    }
+    .state-message.visible { display: block; }
+
+    .state-icon {
+      font-size: 48px;
+      margin-bottom: 16px;
+      opacity: 0.6;
+    }
+    .state-text {
+      font-size: 15px;
+      color: var(--text-secondary);
+      margin-bottom: 8px;
+    }
+    .state-hint {
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+
+    /* 加载动画 */
+    .spinner {
+      display: inline-block;
+      width: 32px;
+      height: 32px;
+      border: 2px solid var(--text-dim);
+      border-top-color: var(--gold);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    /* 结果计数 */
+    .results-count {
+      margin-top: 24px;
+      font-size: 12px;
+      color: var(--text-muted);
+      font-family: var(--font-heading);
+      letter-spacing: 0.06em;
+      text-align: center;
+      opacity: 0;
+      transition: opacity var(--transition-base);
+    }
+    .results-count.visible { opacity: 1; }
+
+    /* ══════════════════════════════════════════
+       Footer
+       ══════════════════════════════════════════ */
+    .site-footer {
+      text-align: center;
+      padding: 48px 0 32px;
+      font-size: 11px;
+      color: var(--text-dim);
+      letter-spacing: 0.06em;
+      font-family: var(--font-heading);
+    }
+    .site-footer a {
+      color: var(--text-muted);
+      text-decoration: none;
+      transition: color var(--transition-fast);
+    }
+    .site-footer a:hover { color: var(--gold-dim); }
+
+    /* ══════════════════════════════════════════
+       Scrollbar
+       ══════════════════════════════════════════ */
+    ::-webkit-scrollbar { width: 8px; }
+    ::-webkit-scrollbar-track { background: var(--bg-deep); }
+    ::-webkit-scrollbar-thumb { background: var(--text-dim); border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+
+    /* ══════════════════════════════════════════
+       Animations
+       ══════════════════════════════════════════ */
+    @keyframes cardEnter {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes chipIn {
+      from { opacity: 0; transform: scale(0.85); }
+      to { opacity: 1; transform: scale(1); }
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+  </style>
 </head>
 <body>
-  <main>
-    <h1>Daggerheart Marketplace</h1>
-    <p>前台页面尚未开始设计。当前阶段只完成后端、数据与项目骨架。</p>
-  </main>
+
+  <!-- 纹理与暗角 -->
+  <div class="texture-overlay" aria-hidden="true"></div>
+  <div class="vignette" aria-hidden="true"></div>
+
+  <!-- ═══ 主容器 ═══ -->
+  <div class="app">
+    <!-- Hero -->
+    <header class="hero">
+      <div class="hero-ornament">
+        <span class="hero-ornament-icon" aria-hidden="true">✦ ✦ ✦</span>
+      </div>
+      <h1 class="hero-title">Daggerheart <em>Marketplace</em></h1>
+      <p class="hero-subtitle">第三方模组与资源目录</p>
+      <div class="hero-divider" aria-hidden="true"></div>
+    </header>
+
+    <!-- 冻结工具栏 -->
+    <div class="toolbar-wrapper" id="toolbarWrapper">
+      <div class="toolbar">
+        <div class="search-box">
+          <span class="search-icon" aria-hidden="true">&#128269;</span>
+          <input
+            type="text"
+            class="search-input"
+            id="searchInput"
+            placeholder="搜索标题、作者、标签、简介…"
+            autocomplete="off"
+          >
+          <button class="search-clear" id="searchClear" aria-label="清除搜索">&times;</button>
+        </div>
+        <button class="tag-trigger" id="contentTagTrigger" aria-haspopup="dialog">
+          内容标签
+          <span class="tag-trigger-count" id="contentTagCount">0</span>
+          <span class="tag-trigger-caret">&#9660;</span>
+        </button>
+        <button class="tag-trigger" id="flavorTagTrigger" aria-haspopup="dialog">
+          风味标签
+          <span class="tag-trigger-count" id="flavorTagCount">0</span>
+          <span class="tag-trigger-caret">&#9660;</span>
+        </button>
+      </div>
+      <!-- 活跃筛选标签 -->
+      <div class="active-filters" id="activeFilters"></div>
+    </div>
+
+    <!-- 结果计数 -->
+    <div class="results-count" id="resultsCount"></div>
+
+    <!-- 卡片网格 -->
+    <div class="card-grid" id="cardGrid" role="list"></div>
+
+    <!-- 加载态 -->
+    <div class="state-message" id="loadingState">
+      <div class="spinner"></div>
+      <p class="state-text" style="margin-top:20px">正在检视图书馆…</p>
+    </div>
+
+    <!-- 空数据态 -->
+    <div class="state-message" id="emptyState">
+      <div class="state-icon" aria-hidden="true">&#128218;</div>
+      <p class="state-text">目录中暂无资源条目</p>
+      <p class="state-hint">等待管理员添加第一批模组与资源</p>
+    </div>
+
+    <!-- 错误态 -->
+    <div class="state-message" id="errorState">
+      <div class="state-icon" aria-hidden="true">&#9888;</div>
+      <p class="state-text" id="errorText">无法连接到数据服务</p>
+      <p class="state-hint">请确认后端服务已启动</p>
+    </div>
+
+    <!-- 页脚 -->
+    <footer class="site-footer">
+      Daggerheart Marketplace &mdash; 仅做目录索引，点击卡片跳转至外部资源
+    </footer>
+  </div>
+
+  <!-- ═══ 标签选择弹窗 ═══ -->
+  <div class="modal-overlay" id="tagModal" role="dialog" aria-modal="true" aria-label="标签筛选">
+    <div class="modal">
+      <div class="modal-header">
+        <span class="modal-title">选择标签</span>
+        <button class="modal-close" id="tagModalClose" aria-label="关闭">&times;</button>
+      </div>
+      <div class="modal-body">
+        <!-- 内容标签列 -->
+        <div class="modal-column">
+          <div class="modal-column-title">内容标签</div>
+          <div class="modal-tag-list" id="modalContentTags"></div>
+        </div>
+        <!-- 风味标签列 -->
+        <div class="modal-column">
+          <div class="modal-column-title">风味标签</div>
+          <div class="modal-tag-list" id="modalFlavorTags"></div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn--ghost" id="tagModalClear">清空</button>
+        <button class="btn btn--gold" id="tagModalApply">应用</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ JavaScript ═══ -->
+  <script>
+  (function () {
+    'use strict';
+
+    /* ── 配置 ── */
+    const API_BASE = (() => {
+      // 如果页面从 file:// 加载，回退到 localhost:5000
+      if (window.location.protocol === 'file:') return 'http://localhost:5000';
+      return ''; // 同源
+    })();
+
+    /* ── 状态 ── */
+    const state = {
+      entries: [],
+      tags: { contentTags: [], flavorTags: [] },
+      searchQuery: '',
+      selectedContentTags: [],
+      selectedFlavorTags: [],
+      pendingContentTags: [],  // 弹窗中暂未应用的
+      pendingFlavorTags: [],
+      loading: true,
+      error: null,
+      tagModalOpen: false,
+    };
+
+    /* ── DOM 引用 ── */
+    const $ = (sel) => document.querySelector(sel);
+    const $$ = (sel) => document.querySelectorAll(sel);
+
+    const dom = {
+      searchInput: $('#searchInput'),
+      searchClear: $('#searchClear'),
+      contentTagTrigger: $('#contentTagTrigger'),
+      flavorTagTrigger: $('#flavorTagTrigger'),
+      contentTagCount: $('#contentTagCount'),
+      flavorTagCount: $('#flavorTagCount'),
+      activeFilters: $('#activeFilters'),
+      cardGrid: $('#cardGrid'),
+      resultsCount: $('#resultsCount'),
+      loadingState: $('#loadingState'),
+      emptyState: $('#emptyState'),
+      errorState: $('#errorState'),
+      errorText: $('#errorText'),
+      tagModal: $('#tagModal'),
+      tagModalClose: $('#tagModalClose'),
+      modalContentTags: $('#modalContentTags'),
+      modalFlavorTags: $('#modalFlavorTags'),
+      tagModalClear: $('#tagModalClear'),
+      tagModalApply: $('#tagModalApply'),
+    };
+
+    /* ── API ── */
+    async function apiFetch(path) {
+      const res = await fetch(API_BASE + path, {
+        headers: { 'Accept': 'application/json' },
+      });
+      if (!res.ok) throw new Error(`API ${res.status}: ${res.statusText}`);
+      return res.json();
+    }
+
+    async function loadData() {
+      try {
+        const data = await apiFetch('/api/public/bootstrap');
+        state.entries = data.entries || [];
+        state.tags = data.tags || { contentTags: [], flavorTags: [] };
+        state.loading = false;
+        state.error = null;
+      } catch (err) {
+        console.error('数据加载失败:', err);
+        state.loading = false;
+        state.error = err.message;
+      }
+    }
+
+    /* ── 筛选逻辑 ── */
+    function getFilteredEntries() {
+      const q = state.searchQuery.trim().toLowerCase();
+      const selContent = state.selectedContentTags;
+      const selFlavor = state.selectedFlavorTags;
+
+      return state.entries.filter(entry => {
+        // 全文搜索
+        if (q) {
+          const searchText = [
+            entry.title, entry.author, entry.summary,
+            ...(entry.contentTags || []),
+            ...(entry.flavorTags || []),
+          ].join(' ').toLowerCase();
+          if (!searchText.includes(q)) return false;
+        }
+
+        // 内容标签筛选 (组内 OR)
+        if (selContent.length > 0) {
+          const entryContent = entry.contentTags || [];
+          if (!selContent.some(t => entryContent.includes(t))) return false;
+        }
+
+        // 风味标签筛选 (组内 OR)
+        if (selFlavor.length > 0) {
+          const entryFlavor = entry.flavorTags || [];
+          if (!selFlavor.some(t => entryFlavor.includes(t))) return false;
+        }
+
+        return true;
+      });
+    }
+
+    /* ── 渲染 ── */
+    function renderAll() {
+      renderActiveFilters();
+      renderTagTriggerStates();
+      renderCardGrid();
+      renderTagModal(); // 如果弹窗开着，刷新内容
+    }
+
+    function renderTagTriggerStates() {
+      const sc = state.selectedContentTags.length;
+      const sf = state.selectedFlavorTags.length;
+
+      dom.contentTagCount.textContent = sc || '0';
+      dom.flavorTagCount.textContent = sf || '0';
+
+      dom.contentTagTrigger.classList.toggle('active', sc > 0);
+      dom.flavorTagTrigger.classList.toggle('active', sf > 0);
+    }
+
+    function renderActiveFilters() {
+      const chips = [];
+
+      state.selectedContentTags.forEach(tag => {
+        chips.push({ type: 'content', tag, label: tag });
+      });
+      state.selectedFlavorTags.forEach(tag => {
+        chips.push({ type: 'flavor', tag, label: tag });
+      });
+
+      dom.activeFilters.innerHTML = chips.map(c =>
+        `<span class="active-filter-chip" data-type="${c.type}" data-tag="${escAttr(c.tag)}">
+          ${escHtml(c.label)} <span class="active-filter-chip-remove">&times;</span>
+        </span>`
+      ).join('');
+
+      // 点击 chip 移除
+      dom.activeFilters.querySelectorAll('.active-filter-chip').forEach(chip => {
+        chip.addEventListener('click', () => {
+          const type = chip.dataset.type;
+          const tag = chip.dataset.tag;
+          if (type === 'content') {
+            state.selectedContentTags = state.selectedContentTags.filter(t => t !== tag);
+          } else {
+            state.selectedFlavorTags = state.selectedFlavorTags.filter(t => t !== tag);
+          }
+          syncPendingFromSelected();
+          renderAll();
+        });
+      });
+    }
+
+    function renderCardGrid() {
+      const filtered = getFilteredEntries();
+
+      // 更新结果计数
+      if (!state.loading && state.entries.length > 0) {
+        const total = state.entries.length;
+        const shown = filtered.length;
+        if (shown === total) {
+          dom.resultsCount.textContent = `共 ${total} 个条目`;
+        } else {
+          dom.resultsCount.textContent = `筛选出 ${shown} / ${total} 个条目`;
+        }
+        dom.resultsCount.classList.add('visible');
+      } else {
+        dom.resultsCount.classList.remove('visible');
+      }
+
+      // 无筛选结果但总数据不为空
+      if (!state.loading && state.entries.length > 0 && filtered.length === 0) {
+        dom.cardGrid.innerHTML = '';
+        dom.emptyState.classList.add('visible');
+        dom.emptyState.querySelector('.state-text').textContent = '没有匹配的资源';
+        dom.emptyState.querySelector('.state-hint').textContent = '尝试调整搜索词或标签筛选';
+        return;
+      }
+
+      dom.emptyState.classList.remove('visible');
+
+      dom.cardGrid.innerHTML = filtered.map((entry, idx) => {
+        const hasSummary = !!(entry.summary && entry.summary.trim());
+        const isRecommended = entry.recommendValue > 0;
+        const contentTags = entry.contentTags || [];
+        const flavorTags = entry.flavorTags || [];
+
+        return `
+        <div class="card ${isRecommended ? 'recommended' : ''} ${hasSummary ? 'has-summary' : ''}"
+             role="listitem"
+             style="animation-delay: ${Math.min(idx * 0.04, 0.6)}s"
+             data-href="${escAttr(entry.targetUrl)}"
+             data-id="${escAttr(entry.id)}">
+          <div class="card-cover">
+            <img src="${escAttr(entry.coverPath)}"
+                 alt="${escAttr(entry.title)} 封面"
+                 loading="lazy"
+                 onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+            <div class="card-cover-placeholder" style="display:none">
+              <span class="card-cover-placeholder-icon">&#9876;</span>
+              <span class="card-cover-placeholder-text">NO COVER</span>
+            </div>
+            ${isRecommended ? '<span class="card-badge">&#9733; 推荐</span>' : ''}
+            ${hasSummary ? '<span class="card-summary-indicator" aria-hidden="true">i</span>' : ''}
+            ${hasSummary ? `<div class="card-summary-tooltip">${escHtml(entry.summary)}</div>` : ''}
+          </div>
+          <div class="card-body">
+            <div class="card-title">${escHtml(entry.title)}</div>
+            <div class="card-author">${escHtml(entry.author)}</div>
+            <div class="card-tags">
+              ${contentTags.map(t => `<span class="card-tag card-tag--content">${escHtml(t)}</span>`).join('')}
+              ${flavorTags.map(t => `<span class="card-tag card-tag--flavor">${escHtml(t)}</span>`).join('')}
+            </div>
+          </div>
+        </div>`;
+      }).join('');
+
+      // 卡片点击 → 跳转外链（排除标签点击）
+      dom.cardGrid.querySelectorAll('.card').forEach(card => {
+        card.addEventListener('click', (e) => {
+          // 不要拦截标签上的点击（虽然标签不可交互，但防止意外）
+          const href = card.dataset.href;
+          if (href) window.open(href, '_blank', 'noopener');
+        });
+      });
+    }
+
+    function renderTagModal() {
+      // 内容标签
+      const contentTags = state.tags.contentTags || [];
+      dom.modalContentTags.innerHTML = contentTags.length === 0
+        ? '<div class="modal-tag-empty">暂无内容标签</div>'
+        : contentTags.map(tc => {
+            const selected = state.pendingContentTags.includes(tc.tag);
+            return `
+            <div class="modal-tag-item ${selected ? 'selected' : ''}"
+                 data-type="content" data-tag="${escAttr(tc.tag)}">
+              <span>${escHtml(tc.tag)}</span>
+              <span class="modal-tag-count">${tc.count}</span>
+            </div>`;
+          }).join('');
+
+      // 风味标签
+      const flavorTags = state.tags.flavorTags || [];
+      dom.modalFlavorTags.innerHTML = flavorTags.length === 0
+        ? '<div class="modal-tag-empty">暂无风味标签</div>'
+        : flavorTags.map(tc => {
+            const selected = state.pendingFlavorTags.includes(tc.tag);
+            return `
+            <div class="modal-tag-item ${selected ? 'selected' : ''}"
+                 data-type="flavor" data-tag="${escAttr(tc.tag)}">
+              <span>${escHtml(tc.tag)}</span>
+              <span class="modal-tag-count">${tc.count}</span>
+            </div>`;
+          }).join('');
+
+      // 标签点击切换
+      dom.tagModal.querySelectorAll('.modal-tag-item').forEach(item => {
+        item.addEventListener('click', () => {
+          const type = item.dataset.type;
+          const tag = item.dataset.tag;
+          if (type === 'content') {
+            togglePendingTag(state.pendingContentTags, tag);
+          } else {
+            togglePendingTag(state.pendingFlavorTags, tag);
+          }
+          renderTagModal();
+        });
+      });
+    }
+
+    function togglePendingTag(arr, tag) {
+      const idx = arr.indexOf(tag);
+      if (idx === -1) arr.push(tag);
+      else arr.splice(idx, 1);
+    }
+
+    /* ── 状态显示切换 ── */
+    function updateDisplayMode() {
+      dom.loadingState.classList.toggle('visible', state.loading);
+      dom.errorState.classList.toggle('visible', !!state.error && !state.loading);
+
+      if (state.error) {
+        dom.errorText.textContent = state.error;
+      }
+
+      const hasData = state.entries.length > 0;
+      dom.cardGrid.style.display = (!state.loading && !state.error && hasData) ? '' : 'none';
+
+      // 空数据提示由 renderCardGrid 处理
+      if (!state.loading && !state.error && state.entries.length === 0) {
+        dom.emptyState.classList.add('visible');
+        dom.emptyState.querySelector('.state-text').textContent = '目录中暂无资源条目';
+        dom.emptyState.querySelector('.state-hint').textContent = '等待管理员添加第一批模组与资源';
+      }
+    }
+
+    /* ── 弹窗控制 ── */
+    function openTagModal() {
+      state.pendingContentTags = [...state.selectedContentTags];
+      state.pendingFlavorTags = [...state.selectedFlavorTags];
+      state.tagModalOpen = true;
+      dom.tagModal.classList.add('visible');
+      renderTagModal();
+      document.body.style.overflow = 'hidden';
+    }
+
+    function closeTagModal(apply) {
+      if (apply) {
+        state.selectedContentTags = [...state.pendingContentTags];
+        state.selectedFlavorTags = [...state.pendingFlavorTags];
+        renderAll();
+      }
+      state.tagModalOpen = false;
+      dom.tagModal.classList.remove('visible');
+      document.body.style.overflow = '';
+    }
+
+    function syncPendingFromSelected() {
+      state.pendingContentTags = [...state.selectedContentTags];
+      state.pendingFlavorTags = [...state.selectedFlavorTags];
+    }
+
+    /* ── 事件绑定 ── */
+    // 搜索
+    let searchTimer;
+    dom.searchInput.addEventListener('input', () => {
+      const val = dom.searchInput.value;
+      dom.searchClear.classList.toggle('visible', val.length > 0);
+
+      clearTimeout(searchTimer);
+      searchTimer = setTimeout(() => {
+        state.searchQuery = val;
+        renderAll();
+      }, 200);
+    });
+
+    dom.searchClear.addEventListener('click', () => {
+      dom.searchInput.value = '';
+      dom.searchClear.classList.remove('visible');
+      state.searchQuery = '';
+      renderAll();
+      dom.searchInput.focus();
+    });
+
+    // 标签触发器
+    dom.contentTagTrigger.addEventListener('click', () => openTagModal());
+    dom.flavorTagTrigger.addEventListener('click', () => openTagModal());
+
+    // 弹窗
+    dom.tagModalClose.addEventListener('click', () => closeTagModal(false));
+    dom.tagModal.addEventListener('click', (e) => {
+      if (e.target === dom.tagModal) closeTagModal(false);
+    });
+    dom.tagModalClear.addEventListener('click', () => {
+      state.pendingContentTags = [];
+      state.pendingFlavorTags = [];
+      renderTagModal();
+    });
+    dom.tagModalApply.addEventListener('click', () => closeTagModal(true));
+
+    // 键盘
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && state.tagModalOpen) {
+        closeTagModal(false);
+      }
+    });
+
+    /* ── 工具函数 ── */
+    function escHtml(str) {
+      if (!str) return '';
+      const div = document.createElement('div');
+      div.appendChild(document.createTextNode(str));
+      return div.innerHTML;
+    }
+
+    function escAttr(str) {
+      if (!str) return '';
+      return str.replace(/&/g, '&amp;').replace(/"/g, '&quot;')
+                .replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+
+    /* ── 初始化 ── */
+    async function init() {
+      updateDisplayMode();
+      await loadData();
+      updateDisplayMode();
+      renderAll();
+    }
+
+    init();
+  })();
+  </script>
+
 </body>
 </html>

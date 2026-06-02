@@ -3,12 +3,1140 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Daggerheart Marketplace Admin</title>
+  <title>Marketplace Admin</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    /* ══════════════════════════════════════════
+       Variables
+       ══════════════════════════════════════════ */
+    :root {
+      --bg-deepest: #0a0807;
+      --bg-deep: #12100d;
+      --bg-surface: #1b1713;
+      --bg-elevated: #252019;
+      --bg-highlight: #302922;
+      --bg-input: #14110d;
+
+      --gold: #b89342;
+      --gold-light: #c9a54e;
+      --gold-bright: #ddc078;
+      --gold-dim: #6b5a32;
+      --gold-dark: #3d3018;
+
+      --crimson: #843434;
+      --crimson-light: #a84444;
+      --danger: #b84040;
+      --danger-hover: #d45050;
+
+      --text-primary: #ddd2bc;
+      --text-secondary: #a09885;
+      --text-muted: #6b6354;
+      --text-dim: #484133;
+
+      --font-display: 'Cinzel', 'Noto Serif SC', 'Source Han Serif SC', serif;
+      --font-body: 'Noto Serif SC', 'Source Han Serif SC', 'STSong', 'SimSun', system-ui, sans-serif;
+
+      --radius-sm: 3px;
+      --radius-md: 6px;
+      --radius-lg: 10px;
+
+      --transition-fast: 0.15s ease;
+      --transition-base: 0.25s ease;
+    }
+
+    /* ══════════════════════════════════════════
+       Reset
+       ══════════════════════════════════════════ */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: var(--font-body);
+      background: var(--bg-deepest);
+      color: var(--text-primary);
+      min-height: 100vh;
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* 背景纹理 */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      pointer-events: none;
+      opacity: 0.025;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    }
+
+    /* ══════════════════════════════════════════
+       Login Screen
+       ══════════════════════════════════════════ */
+    .login-screen {
+      position: fixed;
+      inset: 0;
+      z-index: 10;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--bg-deepest);
+    }
+    .login-screen.hidden { display: none; }
+
+    .login-card {
+      background: var(--bg-surface);
+      border: 1px solid rgba(184, 147, 66, 0.1);
+      border-radius: var(--radius-lg);
+      padding: 48px 40px;
+      width: 380px;
+      max-width: 90vw;
+      text-align: center;
+      box-shadow: 0 16px 48px rgba(0,0,0,0.5);
+    }
+    .login-icon {
+      font-size: 36px;
+      margin-bottom: 16px;
+      opacity: 0.7;
+    }
+    .login-title {
+      font-family: var(--font-display);
+      font-size: 20px;
+      font-weight: 600;
+      color: var(--gold-light);
+      letter-spacing: 0.06em;
+      margin-bottom: 6px;
+    }
+    .login-subtitle {
+      font-size: 13px;
+      color: var(--text-muted);
+      margin-bottom: 28px;
+    }
+    .login-error {
+      font-size: 12px;
+      color: var(--danger);
+      margin-bottom: 14px;
+      min-height: 18px;
+      transition: opacity var(--transition-fast);
+    }
+    .field {
+      margin-bottom: 16px;
+      text-align: left;
+    }
+    .field-label {
+      display: block;
+      font-size: 11px;
+      color: var(--text-muted);
+      letter-spacing: 0.08em;
+      margin-bottom: 6px;
+      font-family: var(--font-display);
+      text-transform: uppercase;
+    }
+    .input {
+      width: 100%;
+      background: var(--bg-input);
+      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: var(--radius-md);
+      padding: 10px 14px;
+      font-family: var(--font-body);
+      font-size: 14px;
+      color: var(--text-primary);
+      outline: none;
+      transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+    }
+    .input:focus {
+      border-color: var(--gold-dim);
+      box-shadow: 0 0 0 3px rgba(184,147,66,0.06);
+    }
+    .input::placeholder { color: var(--text-dim); }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding: 10px 22px;
+      border-radius: var(--radius-md);
+      font-family: var(--font-body);
+      font-size: 13px;
+      cursor: pointer;
+      transition: all var(--transition-fast);
+      border: 1px solid transparent;
+      letter-spacing: 0.03em;
+      white-space: nowrap;
+    }
+    .btn--gold {
+      background: linear-gradient(to bottom, rgba(184,147,66,0.2), rgba(184,147,66,0.1));
+      color: var(--gold-light);
+      border-color: rgba(184,147,66,0.3);
+    }
+    .btn--gold:hover { background: linear-gradient(to bottom, rgba(184,147,66,0.3), rgba(184,147,66,0.18)); border-color: var(--gold); }
+    .btn--gold:disabled { opacity: 0.4; cursor: not-allowed; }
+    .btn--ghost {
+      background: transparent;
+      color: var(--text-secondary);
+      border-color: rgba(255,255,255,0.08);
+    }
+    .btn--ghost:hover { color: var(--text-primary); border-color: rgba(255,255,255,0.18); }
+    .btn--danger {
+      background: rgba(184,64,64,0.1);
+      color: var(--danger);
+      border-color: rgba(184,64,64,0.2);
+    }
+    .btn--danger:hover { background: rgba(184,64,64,0.2); border-color: var(--danger-hover); color: var(--danger-hover); }
+    .btn--sm { padding: 5px 12px; font-size: 12px; }
+
+    .btn-block { width: 100%; }
+
+    /* ══════════════════════════════════════════
+       Dashboard
+       ══════════════════════════════════════════ */
+    .dashboard {
+      position: relative;
+      z-index: 1;
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 32px 24px 80px;
+    }
+    .dashboard.hidden { display: none; }
+
+    .dash-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 32px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+    }
+    .dash-title {
+      font-family: var(--font-display);
+      font-size: 18px;
+      color: var(--gold-light);
+      letter-spacing: 0.06em;
+    }
+    .dash-actions {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+
+    /* 条目列表 */
+    .entry-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .entry-list-header {
+      display: grid;
+      grid-template-columns: 60px 1fr 140px 200px 120px;
+      gap: 12px;
+      padding: 10px 16px;
+      font-size: 11px;
+      color: var(--text-muted);
+      letter-spacing: 0.08em;
+      font-family: var(--font-display);
+      text-transform: uppercase;
+    }
+    .entry-row {
+      display: grid;
+      grid-template-columns: 60px 1fr 140px 200px 120px;
+      gap: 12px;
+      align-items: center;
+      padding: 10px 16px;
+      background: var(--bg-surface);
+      border: 1px solid rgba(255,255,255,0.03);
+      border-radius: var(--radius-md);
+      transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+    }
+    .entry-row:hover {
+      border-color: rgba(184,147,66,0.12);
+      box-shadow: 0 2px 12px rgba(0,0,0,0.3);
+    }
+
+    .entry-row-cover {
+      width: 44px;
+      height: 58px;
+      border-radius: 2px;
+      overflow: hidden;
+      background: var(--bg-deep);
+      flex-shrink: 0;
+    }
+    .entry-row-cover img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    .entry-row-cover .no-cover {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      color: var(--text-dim);
+    }
+    .entry-row-title {
+      font-weight: 600;
+      font-size: 14px;
+      color: var(--text-primary);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .entry-row-author {
+      font-size: 12px;
+      color: var(--text-secondary);
+      margin-top: 2px;
+    }
+    .entry-row-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 3px;
+    }
+    .entry-row-tag {
+      font-size: 10px;
+      padding: 1px 6px;
+      border-radius: 2px;
+      background: rgba(184,147,66,0.08);
+      color: var(--gold-light);
+      border: 1px solid rgba(184,147,66,0.12);
+    }
+    .entry-row-rec {
+      font-size: 11px;
+      color: var(--crimson-light);
+      font-family: var(--font-display);
+    }
+    .entry-row-rec.yes { color: var(--gold-light); }
+    .entry-row-actions {
+      display: flex;
+      gap: 6px;
+      justify-content: flex-end;
+    }
+
+    .empty-list {
+      text-align: center;
+      padding: 48px 24px;
+      color: var(--text-muted);
+      font-size: 14px;
+    }
+
+    .loading-spin {
+      text-align: center;
+      padding: 48px 24px;
+      color: var(--text-muted);
+    }
+    .loading-spin::before {
+      content: '';
+      display: inline-block;
+      width: 24px; height: 24px;
+      border: 2px solid var(--text-dim);
+      border-top-color: var(--gold);
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      margin-right: 10px;
+      vertical-align: middle;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ══════════════════════════════════════════
+       Form Modal
+       ══════════════════════════════════════════ */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 100;
+      background: rgba(0,0,0,0.7);
+      backdrop-filter: blur(4px);
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+      padding-top: 40px;
+      overflow-y: auto;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s ease;
+    }
+    .modal-overlay.visible { opacity: 1; pointer-events: all; }
+
+    .modal {
+      background: var(--bg-surface);
+      border: 1px solid rgba(184,147,66,0.12);
+      border-radius: var(--radius-lg);
+      box-shadow: 0 20px 64px rgba(0,0,0,0.7);
+      width: 600px;
+      max-width: 94vw;
+      margin-bottom: 60px;
+      transform: translateY(8px);
+      transition: transform 0.3s ease;
+    }
+    .modal-overlay.visible .modal { transform: translateY(0); }
+
+    .modal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 18px 24px;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+    }
+    .modal-title {
+      font-family: var(--font-display);
+      font-size: 16px;
+      letter-spacing: 0.04em;
+    }
+    .modal-close {
+      background: none; border: none;
+      color: var(--text-muted); font-size: 22px;
+      cursor: pointer; padding: 2px 8px; border-radius: var(--radius-sm);
+      transition: color var(--transition-fast); line-height: 1;
+    }
+    .modal-close:hover { color: var(--text-primary); }
+
+    .modal-body {
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+      max-height: 70vh;
+      overflow-y: auto;
+    }
+    .modal-footer {
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+      padding: 14px 24px;
+      border-top: 1px solid rgba(255,255,255,0.05);
+    }
+
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+    .form-group { display: flex; flex-direction: column; gap: 5px; }
+    .form-group.full { grid-column: 1 / -1; }
+    .form-label {
+      font-size: 11px;
+      color: var(--text-muted);
+      letter-spacing: 0.06em;
+      font-family: var(--font-display);
+    }
+    .form-label .required { color: var(--crimson-light); }
+
+    .input, .textarea {
+      width: 100%;
+      background: var(--bg-input);
+      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: var(--radius-md);
+      padding: 9px 12px;
+      font-family: var(--font-body);
+      font-size: 13px;
+      color: var(--text-primary);
+      outline: none;
+      transition: border-color var(--transition-fast);
+    }
+    .input:focus, .textarea:focus {
+      border-color: var(--gold-dim);
+      box-shadow: 0 0 0 3px rgba(184,147,66,0.06);
+    }
+    .textarea {
+      resize: vertical;
+      min-height: 70px;
+      line-height: 1.5;
+    }
+    .form-hint {
+      font-size: 11px;
+      color: var(--text-dim);
+    }
+
+    /* 标签 Chip 输入 */
+    .chip-input-wrap {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+      align-items: center;
+      background: var(--bg-input);
+      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: var(--radius-md);
+      padding: 6px 8px;
+      min-height: 40px;
+      cursor: text;
+      transition: border-color var(--transition-fast);
+    }
+    .chip-input-wrap:focus-within {
+      border-color: var(--gold-dim);
+      box-shadow: 0 0 0 3px rgba(184,147,66,0.06);
+    }
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      background: rgba(184,147,66,0.1);
+      border: 1px solid rgba(184,147,66,0.18);
+      border-radius: 14px;
+      padding: 2px 10px;
+      font-size: 12px;
+      color: var(--gold-light);
+      animation: chipPop 0.15s ease;
+    }
+    .chip-remove {
+      background: none; border: none;
+      color: var(--gold-dim); font-size: 14px;
+      cursor: pointer; padding: 0; line-height: 1;
+      transition: color var(--transition-fast);
+    }
+    .chip-remove:hover { color: var(--crimson-light); }
+    .chip-input {
+      flex: 1;
+      min-width: 80px;
+      background: transparent;
+      border: none;
+      outline: none;
+      font-family: var(--font-body);
+      font-size: 13px;
+      color: var(--text-primary);
+      padding: 3px 4px;
+    }
+    .chip-input::placeholder { color: var(--text-dim); font-size: 12px; }
+
+    @keyframes chipPop {
+      from { transform: scale(0.8); opacity: 0; }
+      to { transform: scale(1); opacity: 1; }
+    }
+
+    /* 封面上传 */
+    .cover-upload-area {
+      display: flex;
+      gap: 16px;
+      align-items: flex-start;
+    }
+    .cover-preview {
+      width: 100px;
+      height: 133px;
+      border-radius: var(--radius-sm);
+      background: var(--bg-deep);
+      border: 1px dashed rgba(255,255,255,0.1);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      flex-shrink: 0;
+    }
+    .cover-preview img {
+      width: 100%; height: 100%;
+      object-fit: cover;
+    }
+    .cover-preview-placeholder {
+      font-size: 28px;
+      color: var(--text-dim);
+    }
+    .cover-upload-controls {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .cover-upload-controls .input[type="file"] {
+      font-size: 12px;
+      padding: 6px;
+    }
+    .cover-upload-status {
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+    .cover-upload-status.success { color: #6a9; }
+    .cover-upload-status.error { color: var(--danger); }
+
+    /* Toast */
+    .toast {
+      position: fixed;
+      bottom: 32px;
+      left: 50%;
+      transform: translateX(-50%) translateY(20px);
+      background: var(--bg-elevated);
+      border: 1px solid rgba(184,147,66,0.2);
+      border-radius: var(--radius-md);
+      padding: 10px 20px;
+      font-size: 13px;
+      color: var(--text-primary);
+      box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+      z-index: 300;
+      opacity: 0;
+      pointer-events: none;
+      transition: all 0.3s ease;
+    }
+    .toast.visible { opacity: 1; transform: translateX(-50%) translateY(0); }
+    .toast.error { border-color: rgba(184,64,64,0.3); color: var(--danger-hover); }
+
+    /* 确认对话框 */
+    .confirm-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 250;
+      background: rgba(0,0,0,0.6);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease;
+    }
+    .confirm-overlay.visible { opacity: 1; pointer-events: all; }
+    .confirm-box {
+      background: var(--bg-surface);
+      border: 1px solid rgba(184,64,64,0.2);
+      border-radius: var(--radius-lg);
+      padding: 28px 32px;
+      text-align: center;
+      max-width: 360px;
+      box-shadow: 0 16px 48px rgba(0,0,0,0.6);
+    }
+    .confirm-text {
+      font-size: 14px;
+      margin-bottom: 20px;
+      color: var(--text-primary);
+    }
+    .confirm-actions {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+    }
+
+    /* ══════════════════════════════════════════
+       Scrollbar
+       ══════════════════════════════════════════ */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--text-dim); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+  </style>
 </head>
 <body>
-  <main>
-    <h1>Daggerheart Marketplace Admin</h1>
-    <p>管理页视觉与交互尚未开始实现。当前阶段先完成 API 与数据骨架。</p>
-  </main>
+
+  <!-- ═══ 登录页 ═══ -->
+  <div class="login-screen" id="loginScreen">
+    <div class="login-card">
+      <div class="login-icon" aria-hidden="true">&#9876;</div>
+      <div class="login-title">Marketplace Admin</div>
+      <div class="login-subtitle">管理入口 — 输入口令以继续</div>
+      <div class="login-error" id="loginError"></div>
+      <div class="field">
+        <label class="field-label" for="passwordInput">访问口令</label>
+        <input type="password" id="passwordInput" class="input" placeholder="输入管理口令…" autocomplete="current-password">
+      </div>
+      <button class="btn btn--gold btn-block" id="loginBtn">进入管理</button>
+    </div>
+  </div>
+
+  <!-- ═══ 管理面板 ═══ -->
+  <div class="dashboard hidden" id="dashboard">
+    <header class="dash-header">
+      <span class="dash-title">&#9876; 条目管理</span>
+      <div class="dash-actions">
+        <button class="btn btn--gold" id="newEntryBtn">+ 新建条目</button>
+        <button class="btn btn--ghost" id="logoutBtn">退出</button>
+      </div>
+    </header>
+
+    <div class="entry-list-header">
+      <span>封面</span>
+      <span>标题 / 作者</span>
+      <span>标签</span>
+      <span>链接</span>
+      <span style="text-align:right">操作</span>
+    </div>
+
+    <div class="entry-list" id="entryList">
+      <div class="loading-spin">加载条目数据…</div>
+    </div>
+  </div>
+
+  <!-- ═══ 编辑弹窗 ═══ -->
+  <div class="modal-overlay" id="entryModal">
+    <div class="modal">
+      <div class="modal-header">
+        <span class="modal-title" id="entryModalTitle">新建条目</span>
+        <button class="modal-close" id="entryModalClose">&times;</button>
+      </div>
+      <div class="modal-body" id="entryModalBody">
+        <!-- 动态填充 -->
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn--ghost" id="entryModalCancel">取消</button>
+        <button class="btn btn--gold" id="entryModalSave">保存</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ 确认删除弹窗 ═══ -->
+  <div class="confirm-overlay" id="confirmOverlay">
+    <div class="confirm-box">
+      <div class="confirm-text" id="confirmText">确定要删除此条目吗？此操作不可恢复。</div>
+      <div class="confirm-actions">
+        <button class="btn btn--ghost" id="confirmCancel">取消</button>
+        <button class="btn btn--danger" id="confirmOk">确认删除</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ Toast ═══ -->
+  <div class="toast" id="toast"></div>
+
+  <!-- ═══ JavaScript ═══ -->
+  <script>
+  (function () {
+    'use strict';
+
+    const API_BASE = window.location.protocol === 'file:' ? 'http://localhost:5000' : '';
+
+    /* ── DOM ── */
+    const $ = (s) => document.querySelector(s);
+    const $$ = (s) => document.querySelectorAll(s);
+
+    const loginScreen = $('#loginScreen');
+    const dashboard = $('#dashboard');
+    const loginError = $('#loginError');
+    const passwordInput = $('#passwordInput');
+    const loginBtn = $('#loginBtn');
+    const entryList = $('#entryList');
+    const newEntryBtn = $('#newEntryBtn');
+    const logoutBtn = $('#logoutBtn');
+    const entryModal = $('#entryModal');
+    const entryModalTitle = $('#entryModalTitle');
+    const entryModalBody = $('#entryModalBody');
+    const entryModalClose = $('#entryModalClose');
+    const entryModalCancel = $('#entryModalCancel');
+    const entryModalSave = $('#entryModalSave');
+    const confirmOverlay = $('#confirmOverlay');
+    const confirmText = $('#confirmText');
+    const confirmCancel = $('#confirmCancel');
+    const confirmOk = $('#confirmOk');
+    const toast = $('#toast');
+
+    /* ── 状态 ── */
+    let entries = [];
+    let editingId = null; // null = 新建, string = 编辑中的 id
+    let pendingDeleteId = null;
+    let confirmResolve = null;
+    let formCoverPath = '';
+
+    /* ── API ── */
+    async function api(path, opts = {}) {
+      const url = API_BASE + path;
+      const res = await fetch(url, {
+        credentials: 'include',
+        headers: opts.body instanceof FormData
+          ? {}
+          : { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        ...opts,
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+      return data;
+    }
+
+    /* ── Toast ── */
+    let toastTimer;
+    function showToast(msg, type = '') {
+      toast.textContent = msg;
+      toast.className = 'toast visible ' + type;
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => { toast.classList.remove('visible'); }, 2800);
+    }
+
+    /* ── 会话检查 ── */
+    async function checkSession() {
+      try {
+        const data = await api('/api/admin/session');
+        return data.authenticated === true;
+      } catch { return false; }
+    }
+
+    /* ── 登录 ── */
+    async function doLogin() {
+      const pw = passwordInput.value;
+      if (!pw) { loginError.textContent = '请输入口令'; return; }
+      loginBtn.disabled = true;
+      loginError.textContent = '';
+      try {
+        await api('/api/admin/login', {
+          method: 'POST',
+          body: JSON.stringify({ password: pw }),
+        });
+        showDashboard();
+      } catch (err) {
+        loginError.textContent = err.message;
+      } finally {
+        loginBtn.disabled = false;
+      }
+    }
+
+    /* ── 显示面板 ── */
+    async function showDashboard() {
+      loginScreen.classList.add('hidden');
+      dashboard.classList.remove('hidden');
+      await loadEntries();
+    }
+
+    async function loadEntries() {
+      entryList.innerHTML = '<div class="loading-spin">加载条目数据…</div>';
+      try {
+        const data = await api('/api/admin/entries');
+        entries = data.entries || [];
+        renderEntryList();
+      } catch (err) {
+        entryList.innerHTML = `<div class="empty-list">加载失败：${escHtml(err.message)}</div>`;
+      }
+    }
+
+    function renderEntryList() {
+      if (!entries.length) {
+        entryList.innerHTML = '<div class="empty-list">暂无条目，点击「新建条目」添加第一个资源</div>';
+        return;
+      }
+
+      entryList.innerHTML = entries.map(e => {
+        const rec = e.recommendValue > 0;
+        const thumbHtml = e.coverPath
+          ? `<img src="${escAttr(e.coverPath)}" alt="" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"><span class="no-cover" style="display:none">&#9876;</span>`
+          : '<span class="no-cover">&#9876;</span>';
+
+        return `
+        <div class="entry-row">
+          <div class="entry-row-cover">${thumbHtml}</div>
+          <div>
+            <div class="entry-row-title">${escHtml(e.title)}</div>
+            <div class="entry-row-author">${escHtml(e.author)}</div>
+          </div>
+          <div class="entry-row-tags">
+            ${(e.contentTags||[]).slice(0,3).map(t => `<span class="entry-row-tag">${escHtml(t)}</span>`).join('')}
+            ${(e.contentTags||[]).length > 3 ? `<span class="entry-row-tag">+${e.contentTags.length - 3}</span>` : ''}
+          </div>
+          <div style="font-size:12px;color:var(--text-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${escAttr(e.targetUrl)}">
+            ${rec ? '<span class="entry-row-rec yes">&#9733; 推荐 &nbsp;</span>' : ''}
+            ${escHtml(e.targetUrl.replace(/^https?:\/\//, '').substring(0, 35))}
+          </div>
+          <div class="entry-row-actions">
+            <button class="btn btn--ghost btn--sm edit-btn" data-id="${escAttr(e.id)}">编辑</button>
+            <button class="btn btn--danger btn--sm delete-btn" data-id="${escAttr(e.id)}">删除</button>
+          </div>
+        </div>`;
+      }).join('');
+
+      // 事件绑定
+      entryList.querySelectorAll('.edit-btn').forEach(btn =>
+        btn.addEventListener('click', () => openEditor(btn.dataset.id)));
+      entryList.querySelectorAll('.delete-btn').forEach(btn =>
+        btn.addEventListener('click', () => confirmDelete(btn.dataset.id)));
+    }
+
+    /* ── 编辑弹窗 ── */
+    function openEditor(id) {
+      editingId = id;
+      formCoverPath = '';
+
+      const entry = id ? entries.find(e => e.id === id) : null;
+      entryModalTitle.textContent = id ? '编辑条目' : '新建条目';
+
+      const title = entry?.title || '';
+      const author = entry?.author || '';
+      const summary = entry?.summary || '';
+      const targetUrl = entry?.targetUrl || '';
+      const recommendValue = entry?.recommendValue ?? 0;
+      const existingCover = entry?.coverPath || '';
+      const contentTags = entry?.contentTags || [];
+      const flavorTags = entry?.flavorTags || [];
+
+      if (existingCover && !formCoverPath) formCoverPath = existingCover;
+
+      entryModalBody.innerHTML = `
+        <!-- 封面 -->
+        <div class="form-group full">
+          <span class="form-label">封面图片</span>
+          <div class="cover-upload-area">
+            <div class="cover-preview" id="coverPreview">
+              ${formCoverPath
+                ? `<img src="${escAttr(formCoverPath)}" alt="封面预览" onerror="this.style.display='none';this.nextElementSibling.style.display='block'"><span class="cover-preview-placeholder" ${formCoverPath?'style="display:none"':''}>&#9876;</span>`
+                : '<span class="cover-preview-placeholder">&#9876;</span>'}
+            </div>
+            <div class="cover-upload-controls">
+              <input type="file" class="input" id="coverFileInput" accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml">
+              <button class="btn btn--ghost btn--sm" id="coverUploadBtn" type="button">上传封面</button>
+              <span class="cover-upload-status" id="coverUploadStatus"></span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 标题 + 作者 -->
+        <div class="form-row">
+          <div class="form-group">
+            <span class="form-label"><span class="required">*</span> 标题</span>
+            <input class="input" id="formTitle" value="${escAttr(title)}" placeholder="资源标题">
+          </div>
+          <div class="form-group">
+            <span class="form-label"><span class="required">*</span> 作者</span>
+            <input class="input" id="formAuthor" value="${escAttr(author)}" placeholder="作者名称">
+          </div>
+        </div>
+
+        <!-- 内容标签 -->
+        <div class="form-group full">
+          <span class="form-label"><span class="required">*</span> 内容标签 <span class="form-hint">— 输入后按 Enter 添加，至少一个</span></span>
+          <div class="chip-input-wrap" id="chipContentTags">
+            ${contentTags.map(t => `<span class="chip" data-tag="${escAttr(t)}">${escHtml(t)}<button class="chip-remove">&times;</button></span>`).join('')}
+            <input class="chip-input" placeholder="输入标签…">
+          </div>
+        </div>
+
+        <!-- 风味标签 -->
+        <div class="form-group full">
+          <span class="form-label">风味标签 <span class="form-hint">— 可选，输入后按 Enter 添加</span></span>
+          <div class="chip-input-wrap" id="chipFlavorTags">
+            ${flavorTags.map(t => `<span class="chip" data-tag="${escAttr(t)}">${escHtml(t)}<button class="chip-remove">&times;</button></span>`).join('')}
+            <input class="chip-input" placeholder="输入标签…">
+          </div>
+        </div>
+
+        <!-- 推荐值 -->
+        <div class="form-group">
+          <span class="form-label">推荐值</span>
+          <input class="input" id="formRecValue" type="number" min="0" value="${recommendValue}" placeholder="0">
+        </div>
+
+        <!-- 跳转链接 -->
+        <div class="form-group">
+          <span class="form-label"><span class="required">*</span> 跳转链接</span>
+          <input class="input" id="formTargetUrl" value="${escAttr(targetUrl)}" placeholder="https://…">
+        </div>
+
+        <!-- 一句话简介 -->
+        <div class="form-group full">
+          <span class="form-label">一句话简介 <span class="form-hint">— 可选，悬停卡片时显示</span></span>
+          <textarea class="textarea" id="formSummary" placeholder="一句话描述这个资源…">${escHtml(summary)}</textarea>
+        </div>
+      `;
+
+      // chip 输入绑定
+      bindChipInput('chipContentTags');
+      bindChipInput('chipFlavorTags');
+
+      // 封面上传
+      const coverFileInput = $('#coverFileInput');
+      const coverUploadBtn = $('#coverUploadBtn');
+      const coverUploadStatus = $('#coverUploadStatus');
+
+      coverUploadBtn.addEventListener('click', async () => {
+        const file = coverFileInput.files[0];
+        if (!file) { coverUploadStatus.textContent = '请先选择文件'; coverUploadStatus.className = 'cover-upload-status error'; return; }
+        coverUploadStatus.textContent = '上传中…';
+        coverUploadStatus.className = 'cover-upload-status';
+        coverUploadBtn.disabled = true;
+        try {
+          const formData = new FormData();
+          formData.append('file', file);
+          const data = await api('/api/admin/covers', { method: 'POST', body: formData });
+          formCoverPath = data.coverPath;
+          // 更新预览
+          const preview = $('#coverPreview');
+          preview.innerHTML = `<img src="${escAttr(formCoverPath)}" alt="封面预览">`;
+          coverUploadStatus.textContent = '上传成功';
+          coverUploadStatus.className = 'cover-upload-status success';
+        } catch (err) {
+          coverUploadStatus.textContent = err.message;
+          coverUploadStatus.className = 'cover-upload-status error';
+        } finally {
+          coverUploadBtn.disabled = false;
+        }
+      });
+
+      entryModal.classList.add('visible');
+      document.body.style.overflow = 'hidden';
+    }
+
+    function closeEditor() {
+      entryModal.classList.remove('visible');
+      document.body.style.overflow = '';
+      editingId = null;
+      formCoverPath = '';
+    }
+
+    async function saveEntry() {
+      const title = $('#formTitle')?.value.trim() || '';
+      const author = $('#formAuthor')?.value.trim() || '';
+      const contentTags = getChipValues('chipContentTags');
+      const flavorTags = getChipValues('chipFlavorTags');
+      const recValue = parseInt($('#formRecValue')?.value || '0', 10) || 0;
+      const targetUrl = $('#formTargetUrl')?.value.trim() || '';
+      const summary = $('#formSummary')?.value.trim() || '';
+
+      // 基本校验
+      if (!title) { showToast('标题不能为空', 'error'); return; }
+      if (!author) { showToast('作者不能为空', 'error'); return; }
+      if (!contentTags.length) { showToast('至少需要一个内容标签', 'error'); return; }
+      if (!targetUrl) { showToast('跳转链接不能为空', 'error'); return; }
+      if (!formCoverPath) { showToast('请上传封面图片', 'error'); return; }
+
+      const body = {
+        title, author, contentTags, flavorTags,
+        recommendValue: recValue,
+        summary, targetUrl,
+        coverPath: formCoverPath,
+      };
+
+      entryModalSave.disabled = true;
+      try {
+        if (editingId) {
+          await api(`/api/admin/entries/${editingId}`, { method: 'PUT', body: JSON.stringify(body) });
+          showToast('条目已更新');
+        } else {
+          await api('/api/admin/entries', { method: 'POST', body: JSON.stringify(body) });
+          showToast('条目已创建');
+        }
+        closeEditor();
+        await loadEntries();
+      } catch (err) {
+        showToast(err.message, 'error');
+      } finally {
+        entryModalSave.disabled = false;
+      }
+    }
+
+    /* ── 删除确认 ── */
+    function confirmDelete(id) {
+      const entry = entries.find(e => e.id === id);
+      confirmText.textContent = `确定要删除「${entry?.title || id}」吗？此操作不可恢复。`;
+      pendingDeleteId = id;
+      confirmOverlay.classList.add('visible');
+      return new Promise((resolve) => { confirmResolve = resolve; });
+    }
+
+    async function doDelete() {
+      if (!pendingDeleteId) return;
+      try {
+        await api(`/api/admin/entries/${pendingDeleteId}`, { method: 'DELETE' });
+        showToast('条目已删除');
+        await loadEntries();
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    }
+
+    /* ── Chip 输入 ── */
+    function bindChipInput(wrapId) {
+      const wrap = document.getElementById(wrapId);
+      if (!wrap) return;
+      const input = wrap.querySelector('.chip-input');
+      if (!input) return;
+
+      // 删除已有 chip
+      wrap.querySelectorAll('.chip-remove').forEach(btn => {
+        btn.addEventListener('click', () => btn.closest('.chip').remove());
+      });
+
+      // 输入新 chip
+      input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          const val = input.value.trim();
+          if (!val) return;
+          // 去重
+          const existing = getChipValues(wrapId);
+          if (existing.includes(val)) { input.value = ''; return; }
+
+          const chip = document.createElement('span');
+          chip.className = 'chip';
+          chip.dataset.tag = val;
+          chip.innerHTML = `${escHtml(val)}<button class="chip-remove">&times;</button>`;
+          chip.querySelector('.chip-remove').addEventListener('click', () => chip.remove());
+          wrap.insertBefore(chip, input);
+          input.value = '';
+        }
+        // Backspace 在空输入时删除最后一个 chip
+        if (e.key === 'Backspace' && input.value === '') {
+          const chips = wrap.querySelectorAll('.chip');
+          if (chips.length > 0) chips[chips.length - 1].remove();
+        }
+      });
+
+      // 点击 wrap 聚焦 input
+      wrap.addEventListener('click', (e) => {
+        if (e.target === wrap) input.focus();
+      });
+    }
+
+    function getChipValues(wrapId) {
+      const wrap = document.getElementById(wrapId);
+      if (!wrap) return [];
+      return [...wrap.querySelectorAll('.chip')].map(c => c.dataset.tag).filter(Boolean);
+    }
+
+    /* ── 事件绑定 ── */
+    loginBtn.addEventListener('click', doLogin);
+    passwordInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') doLogin(); });
+
+    logoutBtn.addEventListener('click', async () => {
+      try { await api('/api/admin/logout', { method: 'POST' }); } catch {}
+      loginScreen.classList.remove('hidden');
+      dashboard.classList.add('hidden');
+      passwordInput.value = '';
+      entries = [];
+    });
+
+    newEntryBtn.addEventListener('click', () => openEditor(null));
+
+    entryModalClose.addEventListener('click', closeEditor);
+    entryModalCancel.addEventListener('click', closeEditor);
+    entryModal.addEventListener('click', (e) => { if (e.target === entryModal) closeEditor(); });
+    entryModalSave.addEventListener('click', saveEntry);
+
+    confirmCancel.addEventListener('click', () => {
+      confirmOverlay.classList.remove('visible');
+      pendingDeleteId = null;
+      if (confirmResolve) { confirmResolve(false); confirmResolve = null; }
+    });
+    confirmOk.addEventListener('click', async () => {
+      confirmOverlay.classList.remove('visible');
+      await doDelete();
+      const id = pendingDeleteId;
+      pendingDeleteId = null;
+      if (confirmResolve) { confirmResolve(true); confirmResolve = null; }
+    });
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        if (entryModal.classList.contains('visible')) closeEditor();
+        if (confirmOverlay.classList.contains('visible')) {
+          confirmOverlay.classList.remove('visible');
+          pendingDeleteId = null;
+          if (confirmResolve) { confirmResolve(false); confirmResolve = null; }
+        }
+      }
+    });
+
+    /* ── 工具函数 ── */
+    function escHtml(s) {
+      if (!s) return '';
+      const d = document.createElement('div');
+      d.appendChild(document.createTextNode(s));
+      return d.innerHTML;
+    }
+    function escAttr(s) {
+      if (!s) return '';
+      return s.replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+
+    /* ── 初始化 ── */
+    async function init() {
+      const authed = await checkSession();
+      if (authed) {
+        await showDashboard();
+      } else {
+        loginScreen.classList.remove('hidden');
+      }
+    }
+
+    init();
+  })();
+  </script>
+
 </body>
 </html>

@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(Get-ChildItem -Recurse -Depth 3)",
+      "Bash(Select-Object FullName, Length)",
+      "Bash(Format-Table -AutoSize)",
+      "PowerShell(New-Item *)",
+      "PowerShell(python server/app.py)",
+      "Bash(curl -s http://localhost:5000/api/health)",
+      "Bash(curl -s http://localhost:5000/api/public/bootstrap)",
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(f'entries: {len\\(d[\\\\\"entries\\\\\"]\\)}, contentTags: {len\\(d[\\\\\"tags\\\\\"][\\\\\"contentTags\\\\\"]\\)}, flavorTags: {len\\(d[\\\\\"tags\\\\\"][\\\\\"flavorTags\\\\\"]\\)}'\\)\")"
+    ]
+  }
+}

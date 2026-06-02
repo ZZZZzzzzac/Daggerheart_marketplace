@@ -12,7 +12,7 @@ from typing import Any
 from urllib.parse import urlparse
 from uuid import uuid4
 
-from flask import Flask, jsonify, request, session
+from flask import Flask, jsonify, request, send_from_directory, session
 from werkzeug.utils import secure_filename
 
 
@@ -185,6 +185,23 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
             ),
             201,
         )
+
+    # ── 开发环境：serve 前端静态文件与封面 ──
+    frontend_dir = ROOT_DIR / "frontend"
+
+    @app.route("/")
+    @app.route("/marketplace/")
+    def serve_index():
+        return send_from_directory(str(frontend_dir), "index.html")
+
+    @app.route("/marketplace/admin/")
+    @app.route("/admin/")
+    def serve_admin():
+        return send_from_directory(str(frontend_dir / "admin"), "index.html")
+
+    @app.route("/marketplace/covers/<path:filename>")
+    def serve_cover(filename: str):
+        return send_from_directory(str(Path(app.config["COVERS_DIR"])), filename)
 
     return app
 
