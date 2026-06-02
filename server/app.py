@@ -318,7 +318,7 @@ def normalize_entry(
 
     if current_entry:
         entry_id = current_entry["id"]
-        created_at = current_entry["createdAt"]
+        created_at = current_entry.get("createdAt", now_iso())
     else:
         requested_id = normalize_optional_text(payload.get("id"))
         entry_id = requested_id or generate_entry_id(existing_ids)
@@ -353,7 +353,7 @@ def normalize_optional_text(value: Any) -> str:
         return ""
     if not isinstance(value, str):
         value = str(value)
-    return re.sub(r"\s+", " ", value).strip()
+    return re.sub(r"[ \t]+", " ", value).strip()
 
 
 def normalize_tags(value: Any, *, required: bool) -> list[str]:
