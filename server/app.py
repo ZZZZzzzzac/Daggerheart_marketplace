@@ -160,6 +160,34 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         delete_cover_file(app, current_entry.get("coverPath", ""))
         return jsonify({"deletedId": entry_id})
 
+    @app.post("/api/admin/entries/import")
+    @require_admin_session
+    def import_entries():
+        payload = request.get_json(silent=True) or {}
+        incoming = payload.get("entries")
+        if not isinstance(incoming, list):
+            raise ValidationError("entries must be an array")
+        existing_ids = set()
+        normalized = []
+        for item in incoming:
+            item = item if isinstance(item, dict) else {}
+            entry = normalize_entry(
+                item,
+                cover_url_prefix=app.config["COVER_URL_PREFIX"],
+                existing_ids=existing_ids,
+            )
+            # 保留原条目的时间戳
+            original_created = normalize_optional_text(item.get("createdAt"))
+            if original_created:
+                entry["createdAt"] = original_created
+            original_updated = normalize_optional_text(item.get("updatedAt"))
+            if original_updated:
+                entry["updatedAt"] = original_updated
+            normalized.append(entry)
+            existing_ids.add(entry["id"])
+        save_entries(app, normalized)
+        return jsonify({"imported": len(normalized)})
+
     @app.post("/api/admin/covers")
     @require_admin_session
     def upload_cover():

@@ -567,6 +567,9 @@
     <header class="dash-header">
       <span class="dash-title">&#9876; 条目管理</span>
       <div class="dash-actions">
+        <button class="btn btn--ghost" id="exportBtn">导出 JSON</button>
+        <button class="btn btn--ghost" id="importBtn">导入 JSON</button>
+        <input type="file" id="importFile" accept=".json" style="display:none">
         <button class="btn btn--gold" id="newEntryBtn">+ 新建条目</button>
         <button class="btn btn--ghost" id="logoutBtn">退出</button>
         <button class="theme-toggle" id="themeToggle" aria-label="切换亮色/暗色主题" title="切换主题">&#9788;</button>
@@ -1116,6 +1119,46 @@
     });
 
     newEntryBtn.addEventListener('click', () => openEditor(null));
+
+    // 导出 JSON
+    $('#exportBtn').addEventListener('click', async () => {
+      try {
+        const data = await api('/api/admin/entries');
+        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'entries_backup_' + new Date().toISOString().slice(0,10) + '.json';
+        a.click();
+        URL.revokeObjectURL(url);
+      } catch (e) { alert('导出失败: ' + e.message); }
+    });
+
+    // 导入 JSON
+    const importFileInput = $('#importFile');
+    $('#importBtn').addEventListener('click', () => importFileInput.click());
+    importFileInput.addEventListener('change', async () => {
+      const file = importFileInput.files[0];
+      if (!file) return;
+      if (!confirm(`确定要用 "${file.name}" 替换全部条目吗？此操作不可撤销。`)) {
+        importFileInput.value = '';
+        return;
+      }
+      try {
+        const text = await file.text();
+        const data = JSON.parse(text);
+        const entries = data.entries || data;
+        if (!Array.isArray(entries)) throw new Error('JSON 格式不正确：需要 entries 数组');
+        const result = await api('/api/admin/entries/import', {
+          method: 'POST',
+          body: JSON.stringify({ entries }),
+        });
+        alert(`导入成功，共 ${result.imported} 个条目`);
+        importFileInput.value = '';
+        await loadEntries();
+      } catch (e) { alert('导入失败: ' + e.message); importFileInput.value = ''; }
+    });
+
     entryModalClose.addEventListener('click', closeEditor);
     entryModalCancel.addEventListener('click', closeEditor);
     entryModal.addEventListener('click', (e) => { if (e.target === entryModal) closeEditor(); });

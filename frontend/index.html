@@ -413,6 +413,33 @@
     .active-filter-chip:hover .active-filter-chip-remove { opacity: 1; }
 
     /* ══════════════════════════════════════════
+       Section Sidebar Navigation
+       ══════════════════════════════════════════ */
+    .section-nav {
+      position: fixed;
+      left: max(16px, calc((100vw - var(--max-width)) / 2 - 140px));
+      top: 50%;
+      transform: translateY(-50%);
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      z-index: 10;
+    }
+    .section-nav-link {
+      font-family: var(--font-heading);
+      font-size: 13px;
+      color: var(--text-muted);
+      text-decoration: none;
+      letter-spacing: 0.06em;
+      padding: 4px 0;
+      transition: color var(--transition-fast);
+      scroll-behavior: smooth;
+    }
+    .section-nav-link:hover {
+      color: var(--gold-light);
+    }
+
+    /* ══════════════════════════════════════════
        Card Grid
        ══════════════════════════════════════════ */
     .card-grid {
@@ -420,6 +447,27 @@
       grid-template-columns: repeat(auto-fill, minmax(268px, 1fr));
       gap: 24px;
       margin-top: 28px;
+    }
+
+    .section-header {
+      grid-column: 1 / -1;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      font-family: var(--font-display);
+      font-size: 26px;
+      font-weight: 700;
+      color: var(--gold-bright);
+      letter-spacing: 0.1em;
+      margin-top: 40px;
+      padding-bottom: 8px;
+      border-bottom: 2px solid var(--border-gold-strong);
+    }
+    .section-header::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: linear-gradient(to right, var(--gold-dim), transparent);
     }
 
     .card {
@@ -897,6 +945,8 @@
       <div class="active-filters" id="activeFilters"></div>
     </div>
 
+    <nav class="section-nav" id="sectionNav" style="display:none"></nav>
+
     <div class="results-count" id="resultsCount"></div>
     <div class="card-grid" id="cardGrid" role="list"></div>
 
@@ -1005,6 +1055,7 @@
       activeFilters: $('#activeFilters'),
       cardGrid: $('#cardGrid'),
       resultsCount: $('#resultsCount'),
+      sectionNav: $('#sectionNav'),
       loadingState: $('#loadingState'),
       emptyState: $('#emptyState'),
       errorState: $('#errorState'),
@@ -1093,34 +1144,13 @@
       });
     }
 
-    function renderCardGrid() {
-      const filtered = getFilteredEntries();
+    function renderCard(entry, idx) {
+      const hasSummary = !!(entry.summary && entry.summary.trim());
+      const isRec = entry.recommendValue > 0;
+      const cTags = entry.contentTags || [];
+      const fTags = entry.flavorTags || [];
 
-      if (!state.loading && state.entries.length > 0) {
-        const total = state.entries.length;
-        const shown = filtered.length;
-        dom.resultsCount.textContent = shown === total ? `共 ${total} 个条目` : `筛选出 ${shown} / ${total} 个条目`;
-        dom.resultsCount.classList.add('visible');
-      } else {
-        dom.resultsCount.classList.remove('visible');
-      }
-
-      if (!state.loading && state.entries.length > 0 && filtered.length === 0) {
-        dom.cardGrid.innerHTML = '';
-        dom.emptyState.classList.add('visible');
-        dom.emptyState.querySelector('.state-text').textContent = '没有匹配的资源';
-        dom.emptyState.querySelector('.state-hint').textContent = '尝试调整搜索词或标签筛选';
-        return;
-      }
-      dom.emptyState.classList.remove('visible');
-
-      dom.cardGrid.innerHTML = filtered.map((entry, idx) => {
-        const hasSummary = !!(entry.summary && entry.summary.trim());
-        const isRec = entry.recommendValue > 0;
-        const cTags = entry.contentTags || [];
-        const fTags = entry.flavorTags || [];
-
-        return `
+      return `
         <div class="card ${isRec?'recommended':''} ${hasSummary?'has-summary':''}"
              role="listitem"
              style="animation-delay:${Math.min(idx*0.04,0.6)}s"
@@ -1144,7 +1174,71 @@
             </div>
           </div>
         </div>`;
-      }).join('');
+    }
+
+    function hasTag(entry, tag) {
+      return (entry.contentTags||[]).includes(tag) || (entry.flavorTags||[]).includes(tag);
+    }
+
+    function renderCardGrid() {
+      const filtered = getFilteredEntries();
+      const hasActiveFilter = state.searchQuery.trim() || state.selectedContentTags.length || state.selectedFlavorTags.length;
+
+      if (!state.loading && state.entries.length > 0) {
+        const total = state.entries.length;
+        const shown = filtered.length;
+        dom.resultsCount.textContent = shown === total ? `共 ${total} 个条目` : `筛选出 ${shown} / ${total} 个条目`;
+        dom.resultsCount.classList.add('visible');
+      } else {
+        dom.resultsCount.classList.remove('visible');
+      }
+
+      if (!state.loading && state.entries.length > 0 && filtered.length === 0) {
+        dom.cardGrid.innerHTML = '';
+        dom.emptyState.classList.add('visible');
+        dom.emptyState.querySelector('.state-text').textContent = '没有匹配的资源';
+        dom.emptyState.querySelector('.state-hint').textContent = '尝试调整搜索词或标签筛选';
+        return;
+      }
+      dom.emptyState.classList.remove('visible');
+
+      if (hasActiveFilter) {
+        dom.sectionNav.style.display = 'none';
+        dom.cardGrid.innerHTML = filtered.map((entry, idx) => renderCard(entry, idx)).join('');
+      } else {
+        const sorted = [...state.entries].sort((a, b) => (b.updatedAt||'').localeCompare(a.updatedAt||''));
+        const latest = sorted.slice(0, 8);
+        const campaign = state.entries.filter(e => hasTag(e, '战役框架'));
+        const module = state.entries.filter(e => hasTag(e, '模组'));
+        const resourceTags = ['职业','领域','敌人','环境','传承'];
+        const resource = state.entries.filter(e => resourceTags.some(t => hasTag(e, t)));
+        const extRule = state.entries.filter(e => hasTag(e, '扩展规则'));
+        const allSpecialTags = ['战役框架','模组','职业','领域','敌人','环境','传承','扩展规则'];
+        const tagged = new Set([
+          ...campaign, ...module, ...resource, ...extRule
+        ].map(e => e.id));
+        const other = state.entries.filter(e => !tagged.has(e.id));
+
+        const sections = [
+          { id: 'sec-latest', label: '最新收录', entries: latest },
+          { id: 'sec-module', label: '模组', entries: module },
+          { id: 'sec-resource', label: '资源', entries: resource },
+          { id: 'sec-extrule', label: '扩展规则', entries: extRule },
+          { id: 'sec-campaign', label: '战役框架', entries: campaign },
+          { id: 'sec-other', label: '其他', entries: other },
+        ];
+
+        let gridHtml = '', navHtml = '';
+        for (const s of sections) {
+          if (!s.entries.length) continue;
+          gridHtml += `<div class="section-header" id="${s.id}">${s.label}</div>`;
+          gridHtml += s.entries.map((e, i) => renderCard(e, i)).join('');
+          navHtml += `<a href="#${s.id}" class="section-nav-link">${s.label}</a>`;
+        }
+        dom.cardGrid.innerHTML = gridHtml;
+        dom.sectionNav.innerHTML = navHtml;
+        dom.sectionNav.style.display = 'flex';
+      }
 
       dom.cardGrid.querySelectorAll('.card').forEach(card => {
         card.addEventListener('click', (e) => {
