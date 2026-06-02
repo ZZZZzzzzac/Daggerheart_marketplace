@@ -581,9 +581,9 @@
 
     .card-summary-tooltip {
       position: absolute;
-      bottom: calc(100% + 8px);
+      top: 0;
       left: 50%;
-      transform: translateX(-50%) translateY(4px);
+      transform: translate(-50%, calc(-100% - 8px));
       background: var(--bg-elevated);
       border: 1px solid var(--gold-dim);
       border-radius: var(--radius-md);
@@ -597,7 +597,7 @@
       opacity: 0;
       pointer-events: none;
       transition: all var(--transition-base);
-      z-index: 10;
+      z-index: 20;
       text-align: left;
     }
     .card-summary-tooltip::after {
@@ -609,7 +609,7 @@
       border: 6px solid transparent;
       border-top-color: var(--gold-dim);
     }
-    .card:hover .card-summary-tooltip { opacity: 1; transform: translateX(-50%) translateY(0); }
+    .card:hover .card-summary-tooltip { opacity: 1; transform: translate(-50%, calc(-100% - 8px)); }
 
     /* ══════════════════════════════════════════
        Tag Popup Modal
@@ -1134,8 +1134,8 @@
             </div>
             ${isRec?'<span class="card-badge">&#9733; 推荐</span>':''}
             ${hasSummary?'<span class="card-summary-indicator" aria-hidden="true">i</span>':''}
-            ${hasSummary?`<div class="card-summary-tooltip">${escHtml(entry.summary)}</div>`:''}
           </div>
+          ${hasSummary?`<div class="card-summary-tooltip">${escHtml(entry.summary)}</div>`:''}
           <div class="card-body">
             <div class="card-title">${escHtml(entry.title)}</div>
             <div class="card-author">${escHtml(entry.author)}</div>
