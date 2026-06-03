@@ -24,6 +24,13 @@
 ### 2.1 部署与运行形态
 
 - 部署位置：现有 VPS，挂在 `daggerheart.cn/marketplace/`
+- 服务器：Oracle Cloud VM.Standard.E2.1.Micro（1 OCPU / 1 GB RAM / Ubuntu 22.04）
+- 公网 IP：`151.145.76.60`
+- SSH：`ssh -i .ssh/ssh-key-2026-03-20.key ubuntu@151.145.76.60`（密钥位于 `Daggerheart_VPS` 仓库）
+- 服务器路径：`/var/www/marketplace`（`git clone` 自 `ZZZZzzzzac/Daggerheart_marketplace`）
+- Nginx：`/marketplace/` → alias `frontend/`；`/marketplace/covers/` → alias `data/runtime/covers/`；`/api/` → proxy `127.0.0.1:5090`
+- Flask 后端：systemd `daggerheart_marketplace.service`，监听 `127.0.0.1:5090`
+- 自动更新：`update_repos.sh`（cron 每日 UTC 04:00 执行 `git pull`）
 - 前台：静态页面，使用 `HTML + CSS + JS`
 - 管理能力：极小 Python 服务
 - 数据存储：服务器本地 `JSON`
