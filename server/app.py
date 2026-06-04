@@ -264,6 +264,7 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         return send_from_directory(str(frontend_dir / "admin"), "index.html")
 
     @app.route("/the-great-vault/covers/<path:filename>")
+    @app.route("/marketplace/covers/<path:filename>")
     def serve_cover(filename: str):
         return send_from_directory(str(Path(app.config["COVERS_DIR"])), filename)
 
