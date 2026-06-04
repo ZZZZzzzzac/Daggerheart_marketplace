@@ -1231,8 +1231,11 @@
       RECOMMEND_WEIGHT: 10,
 
       // 分区标签映射
-      PLAYER_RESOURCE_TAGS: ['职业', '领域', '传承', '装备物品'],
-      GM_RESOURCE_TAGS: ['敌人', '环境', '碎心者工具集', '遭遇', '转变卡', '地点设定'],
+      MODULE_TAGS: ['模组', '遭遇'], // 模组资源
+      PLAYER_RESOURCE_TAGS: ['职业', '领域', '传承', '装备物品'], // 玩家资源
+      GM_RESOURCE_TAGS: ['敌人', '环境', '转变卡', '地点设定'], // GM资源
+      EXT_RULE_TAGS: ['扩展规则'], // 扩展规则
+      CAMPAIGN_FRAMEWORK_TAGS: ['战役框架'], // 战役框架
     };
 
     /* ── 主题管理 ── */
@@ -1519,8 +1522,10 @@
           if (sb !== sa) return sb - sa;
           return (b.updatedAt||'').localeCompare(a.updatedAt||'');
         });
-        const campaign = byScore(state.entries.filter(e => hasTag(e, '战役框架')));
-        const module = byScore(state.entries.filter(e => hasTag(e, '模组')));
+        const campaignTags = CONFIG.CAMPAIGN_FRAMEWORK_TAGS;
+        const campaign = byScore(state.entries.filter(e => campaignTags.some(t => hasTag(e, t))));
+        const moduleTags = CONFIG.MODULE_TAGS;
+        const module = byScore(state.entries.filter(e => moduleTags.some(t => hasTag(e, t))));
         const campaignOrModule = new Set([...campaign.map(e => e.id), ...module.map(e => e.id)]);
         const playerResourceTags = CONFIG.PLAYER_RESOURCE_TAGS;
         const playerResource = byScore(state.entries.filter(e =>
@@ -1528,8 +1533,9 @@
         const gmResourceTags = CONFIG.GM_RESOURCE_TAGS;
         const gmResource = byScore(state.entries.filter(e =>
           !campaignOrModule.has(e.id) && gmResourceTags.some(t => hasTag(e, t))));
-        const extRule = byScore(state.entries.filter(e => hasTag(e, '扩展规则')));
-        const allSpecialTags = ['战役框架','模组','扩展规则',...playerResourceTags,...gmResourceTags];
+        const extRuleTags = CONFIG.EXT_RULE_TAGS;
+        const extRule = byScore(state.entries.filter(e => extRuleTags.some(t => hasTag(e, t))));
+        const allSpecialTags = [...campaignTags,...moduleTags,...playerResourceTags,...gmResourceTags,...extRuleTags];
         const tagged = new Set([
           ...campaign, ...module, ...playerResource, ...gmResource, ...extRule
         ].map(e => e.id));

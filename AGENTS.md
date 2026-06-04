@@ -83,6 +83,20 @@
 - 后端测试：`python -m unittest discover -s server/tests -v`
 - 语法检查：`python scripts/check_python_syntax.py`
 
+## 服务器部署
+
+| 项 | 值 |
+|---|---|
+| SSH | `ssh -i .ssh/ssh-key-2026-03-20.key ubuntu@151.145.76.60` |
+| 仓库 | `ZZZZzzzzac/Daggerheart_marketplace` |
+| 服务器路径 | `/var/www/the-great-vault` |
+| Flask 服务 | `daggerheart_marketplace.service`，监听 `127.0.0.1:5090` |
+| 更新脚本 | `/home/ubuntu/update_repos.sh`（含本仓库，cron 每天 UTC 04:00 自动拉取） |
+
+## 推送流程
+
+用户说"推送"时：本地 commit → push → SSH 到服务器执行 `bash /home/ubuntu/update_repos.sh`（不加 sudo），若 systemd 服务有变更则 `sudo systemctl restart daggerheart_marketplace.service`。
+
 ## 改动纪律
 
 - 先保证后端骨架和数据链路成立，再做页面
