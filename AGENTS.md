@@ -101,3 +101,17 @@
 
 - 先保证后端骨架和数据链路成立，再做页面
 - 运行期路径、数据结构、API 变更时，同步更新 `PLAN.md`
+
+## Agent skills
+
+### Issue tracker
+
+Issues live in GitHub Issues (`ZZZZzzzzac/Daggerheart_marketplace`). See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+All five canonical roles use their default label names. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context repo — `CONTEXT.md` at root + `docs/adr/`. See `docs/agents/domain.md`.
