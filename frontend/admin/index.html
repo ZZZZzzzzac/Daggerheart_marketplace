@@ -730,6 +730,7 @@
         entryList.innerHTML = '<div class="empty-list">暂无条目，点击「新建条目」添加第一个资源</div>';
         return;
       }
+      entries.sort((a, b) => (b.updatedAt || '').localeCompare(a.updatedAt || ''));
       entryList.innerHTML = entries.map(e => {
         const rec = e.recommendValue > 0;
         const thumb = e.coverPath
