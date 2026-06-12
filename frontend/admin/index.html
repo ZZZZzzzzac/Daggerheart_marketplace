@@ -1065,24 +1065,6 @@
       if (!s) return;
       pendingDeleteId = id;
       confirmText.textContent = '确定要驳回「' + (s.title || id) + '」吗？此操作不可恢复。';
-      // 临时替换确认回调
-      var origOk = confirmOk.onclick;
-      confirmOk.onclick = async function () {
-        confirmOk.disabled = true;
-        try {
-          await api('/api/admin/submissions/' + pendingDeleteId, { method: 'DELETE' });
-          showToast('已驳回');
-          submissions = submissions.filter(function (x) { return x.id !== pendingDeleteId; });
-          renderSubmissionList();
-          updateSubmissionBadge();
-        } catch (err) { showToast(err.message, 'error'); }
-        finally {
-          confirmOk.disabled = false;
-          pendingDeleteId = null;
-          confirmOk.onclick = origOk;
-          confirmOverlay.classList.remove('visible');
-        }
-      };
       confirmOverlay.classList.add('visible');
     }
 
@@ -1560,9 +1542,17 @@
     async function doDelete() {
       if (!pendingDeleteId) return;
       try {
-        await api(`/api/admin/entries/${pendingDeleteId}`, { method: 'DELETE' });
-        showToast('条目已删除');
-        await loadEntries();
+        if (pendingDeleteId.startsWith('sub_')) {
+          await api('/api/admin/submissions/' + pendingDeleteId, { method: 'DELETE' });
+          showToast('已驳回');
+          submissions = submissions.filter(function (x) { return x.id !== pendingDeleteId; });
+          renderSubmissionList();
+          updateSubmissionBadge();
+        } else {
+          await api('/api/admin/entries/' + pendingDeleteId, { method: 'DELETE' });
+          showToast('条目已删除');
+          await loadEntries();
+        }
       } catch (err) { showToast(err.message, 'error'); }
     }
 
