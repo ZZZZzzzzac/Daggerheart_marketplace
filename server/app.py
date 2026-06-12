@@ -21,7 +21,9 @@ from server import config
 ROOT_DIR = config.ROOT_DIR
 DEFAULT_RUNTIME_DIR = config.RUNTIME_DIR
 DEFAULT_ENTRIES_FILE = config.ENTRIES_FILE
+DEFAULT_SUBMISSIONS_FILE = config.SUBMISSIONS_FILE
 DEFAULT_COVERS_DIR = config.COVERS_DIR
+DEFAULT_PENDING_COVERS_DIR = config.PENDING_COVERS_DIR
 DEFAULT_SECRETS_DIR = config.SECRETS_DIR
 DEFAULT_ADMIN_PASSWORD_FILE = config.ADMIN_PASSWORD_FILE
 DEFAULT_SESSION_SECRET_FILE = config.SESSION_SECRET_FILE
@@ -39,12 +41,15 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         TESTING=False,
         RUNTIME_DIR=str(DEFAULT_RUNTIME_DIR),
         ENTRIES_FILE=str(DEFAULT_ENTRIES_FILE),
+        SUBMISSIONS_FILE=str(DEFAULT_SUBMISSIONS_FILE),
         COVERS_DIR=str(DEFAULT_COVERS_DIR),
+        PENDING_COVERS_DIR=str(DEFAULT_PENDING_COVERS_DIR),
         ADMIN_PASSWORD_FILE=str(DEFAULT_ADMIN_PASSWORD_FILE),
         SESSION_SECRET_FILE=str(DEFAULT_SESSION_SECRET_FILE),
         ADMIN_PASSWORD=os.getenv("MARKETPLACE_ADMIN_PASSWORD"),
         SESSION_SECRET=os.getenv("MARKETPLACE_SESSION_SECRET"),
         COVER_URL_PREFIX=config.COVER_URL_PREFIX,
+        PENDING_COVER_URL_PREFIX=config.PENDING_COVER_URL_PREFIX,
         MAX_CONTENT_LENGTH=MAX_CONTENT_LENGTH,
         SESSION_COOKIE_NAME=config.SESSION_COOKIE_NAME,
         SESSION_COOKIE_HTTPONLY=True,
@@ -57,7 +62,9 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
 
     app.config["RUNTIME_DIR"] = str(Path(app.config["RUNTIME_DIR"]).resolve())
     app.config["ENTRIES_FILE"] = str(Path(app.config["ENTRIES_FILE"]).resolve())
+    app.config["SUBMISSIONS_FILE"] = str(Path(app.config["SUBMISSIONS_FILE"]).resolve())
     app.config["COVERS_DIR"] = str(Path(app.config["COVERS_DIR"]).resolve())
+    app.config["PENDING_COVERS_DIR"] = str(Path(app.config["PENDING_COVERS_DIR"]).resolve())
     app.config["ADMIN_PASSWORD_FILE"] = str(
         Path(app.config["ADMIN_PASSWORD_FILE"]).resolve()
     )
@@ -250,6 +257,119 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
             201,
         )
 
+    # ── 公共投稿 ──
+    @app.post("/api/public/submissions")
+    def submit_entry():
+        payload = request.get_json(silent=True) or {}
+        submissions = load_submissions(app)
+        existing_ids = {s["id"] for s in submissions}
+        submission = normalize_submission(
+            payload,
+            cover_url_prefix=app.config["COVER_URL_PREFIX"],
+            pending_cover_url_prefix=app.config["PENDING_COVER_URL_PREFIX"],
+            existing_ids=existing_ids,
+        )
+        submissions.append(submission)
+        save_submissions(app, submissions)
+        return jsonify({"submission": submission}), 201
+
+    @app.post("/api/public/covers")
+    def upload_pending_cover():
+        file_storage = request.files.get("file")
+        if file_storage is None or not file_storage.filename:
+            raise ValidationError("cover file is required")
+
+        original_name = secure_filename(file_storage.filename)
+        suffix = Path(original_name).suffix.lower()
+        if suffix not in ALLOWED_IMAGE_EXTENSIONS:
+            raise ValidationError("unsupported cover file type")
+
+        filename = f"cover_{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')}_{uuid4().hex[:8]}{suffix}"
+        destination = Path(app.config["PENDING_COVERS_DIR"]) / filename
+        file_storage.save(destination)
+
+        return (
+            jsonify(
+                {
+                    "fileName": filename,
+                    "coverPath": build_cover_url(app.config["PENDING_COVER_URL_PREFIX"], filename),
+                }
+            ),
+            201,
+        )
+
+    # ── 管理员审核 ──
+    @app.get("/api/admin/submissions")
+    @require_admin_session
+    def admin_submissions():
+        return jsonify({"submissions": load_submissions(app)})
+
+    @app.put("/api/admin/submissions/<submission_id>")
+    @require_admin_session
+    def update_submission(submission_id: str):
+        payload = request.get_json(silent=True) or {}
+        submissions = load_submissions(app)
+        index, current = find_submission(submissions, submission_id)
+        normalized = normalize_submission(
+            payload,
+            cover_url_prefix=app.config["COVER_URL_PREFIX"],
+            pending_cover_url_prefix=app.config["PENDING_COVER_URL_PREFIX"],
+            existing_ids={s["id"] for s in submissions if s["id"] != submission_id},
+            current_submission=current,
+        )
+        submissions[index] = normalized
+        save_submissions(app, submissions)
+        return jsonify({"submission": normalized})
+
+    @app.post("/api/admin/submissions/<submission_id>/approve")
+    @require_admin_session
+    def approve_submission(submission_id: str):
+        submissions = load_submissions(app)
+        index, submission = find_submission(submissions, submission_id)
+        submissions.pop(index)
+        save_submissions(app, submissions)
+
+        # 迁移封面
+        cover_path = submission.get("coverPath", "")
+        new_cover_path = migrate_pending_cover(app, cover_path)
+
+        # 生成公开条目
+        entries = load_entries(app)
+        existing_ids = {e["id"] for e in entries}
+        entry_id = generate_entry_id(existing_ids)
+        now = now_iso()
+        entry = {
+            "id": entry_id,
+            "title": submission["title"],
+            "author": submission.get("author", ""),
+            "contentTags": submission.get("contentTags", []),
+            "flavorTags": submission.get("flavorTags", []),
+            "recommendValue": submission.get("recommendValue", 0),
+            "likeCount": 0,
+            "likedBy": [],
+            "summary": submission.get("summary", ""),
+            "coverPath": new_cover_path,
+            "targetUrl": submission["targetUrl"],
+            "createdAt": now,
+            "updatedAt": now,
+        }
+        entries.append(entry)
+        save_entries(app, entries)
+        return jsonify({"entry": entry})
+
+    @app.delete("/api/admin/submissions/<submission_id>")
+    @require_admin_session
+    def reject_submission(submission_id: str):
+        submissions = load_submissions(app)
+        index, submission = find_submission(submissions, submission_id)
+        submissions.pop(index)
+        save_submissions(app, submissions)
+
+        # 清理 pending 封面
+        cover_path = submission.get("coverPath", "")
+        delete_pending_cover_file(app, cover_path)
+        return jsonify({"rejectedId": submission_id})
+
     # ── 开发环境：serve 前端静态文件与封面 ──
     frontend_dir = ROOT_DIR / "frontend"
 
@@ -268,6 +388,10 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
     def serve_cover(filename: str):
         return send_from_directory(str(Path(app.config["COVERS_DIR"])), filename)
 
+    @app.route("/the-great-vault/covers/pending/<path:filename>")
+    def serve_pending_cover(filename: str):
+        return send_from_directory(str(Path(app.config["PENDING_COVERS_DIR"])), filename)
+
     return app
 
 
@@ -284,17 +408,23 @@ def require_admin_session(view_func):
 def ensure_runtime_layout(app: Flask) -> None:
     runtime_dir = Path(app.config["RUNTIME_DIR"])
     entries_file = Path(app.config["ENTRIES_FILE"])
+    submissions_file = Path(app.config["SUBMISSIONS_FILE"])
     covers_dir = Path(app.config["COVERS_DIR"])
+    pending_covers_dir = Path(app.config["PENDING_COVERS_DIR"])
     admin_password_file = Path(app.config["ADMIN_PASSWORD_FILE"])
     session_secret_file = Path(app.config["SESSION_SECRET_FILE"])
 
     runtime_dir.mkdir(parents=True, exist_ok=True)
     covers_dir.mkdir(parents=True, exist_ok=True)
+    pending_covers_dir.mkdir(parents=True, exist_ok=True)
     admin_password_file.parent.mkdir(parents=True, exist_ok=True)
     session_secret_file.parent.mkdir(parents=True, exist_ok=True)
 
     if not entries_file.exists():
         atomic_write_json(entries_file, {"entries": []})
+
+    if not submissions_file.exists():
+        atomic_write_json(submissions_file, {"submissions": []})
 
 
 def load_admin_password(app: Flask) -> str | None:
@@ -541,6 +671,130 @@ def generate_entry_id(existing_ids: set[str]) -> str:
         candidate = f"{config.ENTRY_ID_PREFIX}{uuid4().hex[:config.ENTRY_ID_HEX_LENGTH]}"
         if candidate not in existing_ids:
             return candidate
+
+
+def generate_submission_id(existing_ids: set[str]) -> str:
+    while True:
+        candidate = f"{config.SUBMISSION_ID_PREFIX}{uuid4().hex[:config.SUBMISSION_ID_HEX_LENGTH]}"
+        if candidate not in existing_ids:
+            return candidate
+
+
+def load_submissions(app: Flask) -> list[dict[str, Any]]:
+    submissions_file = Path(app.config["SUBMISSIONS_FILE"])
+    raw_data = json.loads(submissions_file.read_text(encoding="utf-8"))
+    submissions = raw_data.get("submissions")
+    if not isinstance(submissions, list):
+        raise RuntimeError("submissions.json must contain a 'submissions' array")
+    return submissions
+
+
+def save_submissions(app: Flask, submissions: list[dict[str, Any]]) -> None:
+    atomic_write_json(Path(app.config["SUBMISSIONS_FILE"]), {"submissions": submissions})
+
+
+def normalize_submission(
+    payload: dict[str, Any],
+    *,
+    cover_url_prefix: str,
+    pending_cover_url_prefix: str,
+    existing_ids: set[str],
+    current_submission: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    title = normalize_required_text(payload.get("title"), "title")
+    author = normalize_optional_text(payload.get("author"))
+    content_tags = normalize_tags(payload.get("contentTags"), required=False)
+    flavor_tags = normalize_tags(payload.get("flavorTags"), required=False)
+    recommend_value = 0  # 投稿推荐值固定为 0
+    summary = normalize_optional_text(payload.get("summary"))
+    target_url = normalize_external_url(payload.get("targetUrl"))
+
+    # 封面可以是正式路径或 pending 路径
+    cover_path = normalize_optional_text(payload.get("coverPath"))
+    if cover_path:
+        normalized_cover = cover_url_prefix.rstrip("/") + "/"
+        normalized_pending = pending_cover_url_prefix.rstrip("/") + "/"
+        if not (cover_path.startswith(normalized_cover) or cover_path.startswith(normalized_pending)):
+            raise ValidationError("coverPath must use the local cover URL prefix")
+
+    if current_submission:
+        submission_id = current_submission["id"]
+        created_at = current_submission.get("createdAt", now_iso())
+    else:
+        requested_id = normalize_optional_text(payload.get("id"))
+        submission_id = requested_id or generate_submission_id(existing_ids)
+        if submission_id in existing_ids:
+            raise ValidationError("submission id already exists")
+        created_at = now_iso()
+
+    return {
+        "id": submission_id,
+        "title": title,
+        "author": author,
+        "contentTags": content_tags,
+        "flavorTags": flavor_tags,
+        "recommendValue": recommend_value,
+        "summary": summary,
+        "coverPath": cover_path,
+        "targetUrl": target_url,
+        "createdAt": created_at,
+        "updatedAt": now_iso(),
+    }
+
+
+def find_submission(submissions: list[dict[str, Any]], submission_id: str) -> tuple[int, dict[str, Any]]:
+    for index, submission in enumerate(submissions):
+        if submission.get("id") == submission_id:
+            return index, submission
+    raise ValidationError("submission not found")
+
+
+def migrate_pending_cover(app: Flask, cover_path: str) -> str:
+    """将 pending 封面移动到正式 covers 目录，返回新的 coverPath。"""
+    if not cover_path:
+        return ""
+
+    pending_prefix = app.config["PENDING_COVER_URL_PREFIX"].rstrip("/") + "/"
+    if not cover_path.startswith(pending_prefix):
+        # 封面已在正式目录或为空，不迁移
+        return cover_path
+
+    filename = Path(urlparse(cover_path).path).name
+    if not filename:
+        return ""
+
+    pending_dir = Path(app.config["PENDING_COVERS_DIR"]).resolve()
+    covers_dir = Path(app.config["COVERS_DIR"]).resolve()
+    src = (pending_dir / filename)
+    dst = (covers_dir / filename)
+
+    if src.exists():
+        import shutil
+        shutil.move(str(src), str(dst))
+
+    return build_cover_url(app.config["COVER_URL_PREFIX"], filename)
+
+
+def delete_pending_cover_file(app: Flask, cover_path: str) -> None:
+    """删除 pending 目录下的封面文件。"""
+    if not cover_path:
+        return
+
+    pending_prefix = app.config["PENDING_COVER_URL_PREFIX"].rstrip("/") + "/"
+    if not cover_path.startswith(pending_prefix):
+        return
+
+    filename = Path(urlparse(cover_path).path).name
+    if not filename:
+        return
+
+    pending_dir = Path(app.config["PENDING_COVERS_DIR"]).resolve()
+    candidate = (pending_dir / filename).resolve()
+    if candidate.parent != pending_dir:
+        raise ValidationError("resolved cover file is outside pending covers directory")
+
+    if candidate.exists():
+        candidate.unlink()
 
 
 def now_iso() -> str:

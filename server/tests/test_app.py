@@ -19,7 +19,9 @@ class MarketplaceServerTestCase(unittest.TestCase):
         self.base_dir = base_dir
         self.runtime_dir = base_dir / "runtime"
         self.entries_file = self.runtime_dir / "entries.json"
+        self.submissions_file = self.runtime_dir / "submissions.json"
         self.covers_dir = self.runtime_dir / "covers"
+        self.pending_covers_dir = self.covers_dir / "pending"
         self.secrets_dir = self.runtime_dir / "secrets"
 
         self.app = create_app(
@@ -27,12 +29,15 @@ class MarketplaceServerTestCase(unittest.TestCase):
                 "TESTING": True,
                 "RUNTIME_DIR": str(self.runtime_dir),
                 "ENTRIES_FILE": str(self.entries_file),
+                "SUBMISSIONS_FILE": str(self.submissions_file),
                 "COVERS_DIR": str(self.covers_dir),
+                "PENDING_COVERS_DIR": str(self.pending_covers_dir),
                 "ADMIN_PASSWORD_FILE": str(self.secrets_dir / "admin_password.txt"),
                 "SESSION_SECRET_FILE": str(self.secrets_dir / "session_secret.txt"),
                 "ADMIN_PASSWORD": "test-password",
                 "SESSION_SECRET": "test-session-secret",
                 "COVER_URL_PREFIX": "/the-great-vault/covers",
+                "PENDING_COVER_URL_PREFIX": "/the-great-vault/covers/pending",
             }
         )
         self.client = self.app.test_client()
@@ -76,7 +81,7 @@ class MarketplaceServerTestCase(unittest.TestCase):
             "flavorTags": [" 西幻 ", "  "],
             "recommendValue": "1",
             "summary": " 适合短团的边境探索模组。 ",
-            "coverPath": "/marketplace/covers/demo-cover.svg",
+            "coverPath": "/the-great-vault/covers/demo-cover.svg",
             "targetUrl": "https://example.com/module",
         }
 
@@ -134,7 +139,7 @@ class MarketplaceServerTestCase(unittest.TestCase):
                     "flavorTags": ["西幻"],
                     "recommendValue": 1,
                     "summary": "",
-                    "coverPath": "/marketplace/covers/a.svg",
+                    "coverPath": "/the-great-vault/covers/a.svg",
                     "targetUrl": "https://example.com/a",
                     "createdAt": "2026-06-02T00:00:00+00:00",
                     "updatedAt": "2026-06-02T00:00:00+00:00",
@@ -147,7 +152,7 @@ class MarketplaceServerTestCase(unittest.TestCase):
                     "flavorTags": ["西幻", "武侠"],
                     "recommendValue": 0,
                     "summary": "",
-                    "coverPath": "/marketplace/covers/b.svg",
+                    "coverPath": "/the-great-vault/covers/b.svg",
                     "targetUrl": "https://example.com/b",
                     "createdAt": "2026-06-02T00:00:00+00:00",
                     "updatedAt": "2026-06-02T00:00:00+00:00",
@@ -176,7 +181,7 @@ class MarketplaceServerTestCase(unittest.TestCase):
                 "flavorTags": [],
                 "recommendValue": 0,
                 "summary": "",
-                "coverPath": "/marketplace/covers/test.svg",
+                "coverPath": "/the-great-vault/covers/test.svg",
                 "targetUrl": "https://example.com/test",
             },
         )
@@ -219,7 +224,7 @@ class MarketplaceServerTestCase(unittest.TestCase):
                 "flavorTags": [],
                 "recommendValue": 0,
                 "summary": "",
-                "coverPath": "/marketplace/covers/del.svg",
+                "coverPath": "/the-great-vault/covers/del.svg",
                 "targetUrl": "https://example.com/del",
             },
         )
@@ -235,6 +240,259 @@ class MarketplaceServerTestCase(unittest.TestCase):
         entry_ids = [e["id"] for e in bootstrap.get_json()["entries"]]
         self.assertNotIn(entry_id, entry_ids)
 
+    def test_submit_entry_success(self) -> None:
+        """匿名提交合法条目 → 201，数据写入 submissions，不进入 entries。"""
+        payload = {
+            "title": "社区投稿模组",
+            "author": "社区作者",
+            "contentTags": ["模组", "探索"],
+            "flavorTags": ["克苏鲁"],
+            "summary": "一个由社区提交的模组。",
+            "coverPath": "",
+            "targetUrl": "https://example.com/community-module",
+        }
+
+        response = self.client.post("/api/public/submissions", json=payload)
+        self.assertEqual(response.status_code, 201, response.get_json())
+
+        # 投稿不应进入公开条目
+        entries_resp = self.client.get("/api/public/entries")
+        self.assertNotIn(
+            "社区投稿模组",
+            [e["title"] for e in entries_resp.get_json()["entries"]],
+        )
+
+        # 管理员登录后可看到待审列表
+        self.login()
+        submissions_resp = self.client.get("/api/admin/submissions")
+        self.assertEqual(submissions_resp.status_code, 200)
+        submissions = submissions_resp.get_json()["submissions"]
+        self.assertEqual(len(submissions), 1)
+        self.assertEqual(submissions[0]["title"], "社区投稿模组")
+
+    def test_submit_entry_missing_fields(self) -> None:
+        """缺标题或缺目标链接 → 400。"""
+        # 缺标题
+        resp1 = self.client.post(
+            "/api/public/submissions",
+            json={"author": "test", "targetUrl": "https://example.com"},
+        )
+        self.assertEqual(resp1.status_code, 400)
+
+        # 缺目标链接
+        resp2 = self.client.post(
+            "/api/public/submissions",
+            json={"title": "test", "author": "test"},
+        )
+        self.assertEqual(resp2.status_code, 400)
+
+    def test_submissions_auth_required(self) -> None:
+        """所有 admin submissions 端点未登录时返回 401。"""
+        # 先提交一条以获取一个存在的 id
+        self.client.post(
+            "/api/public/submissions",
+            json={
+                "title": "待审条目",
+                "targetUrl": "https://example.com/test",
+            },
+        )
+        self.login()
+        list_resp = self.client.get("/api/admin/submissions")
+        sid = list_resp.get_json()["submissions"][0]["id"]
+
+        # 登出后所有管理端点应拒绝
+        self.client.post("/api/admin/logout")
+
+        self.assertEqual(
+            self.client.get("/api/admin/submissions").status_code, 401
+        )
+        self.assertEqual(
+            self.client.put(f"/api/admin/submissions/{sid}", json={"title": "X"}).status_code, 401
+        )
+        self.assertEqual(
+            self.client.post(f"/api/admin/submissions/{sid}/approve").status_code, 401
+        )
+        self.assertEqual(
+            self.client.delete(f"/api/admin/submissions/{sid}").status_code, 401
+        )
+
+    def test_admin_list_submissions(self) -> None:
+        """登录后 GET /api/admin/submissions 返回待审列表。"""
+        self.client.post(
+            "/api/public/submissions",
+            json={
+                "title": "投稿A",
+                "targetUrl": "https://example.com/a",
+            },
+        )
+        self.client.post(
+            "/api/public/submissions",
+            json={
+                "title": "投稿B",
+                "targetUrl": "https://example.com/b",
+            },
+        )
+
+        self.login()
+        resp = self.client.get("/api/admin/submissions")
+        self.assertEqual(resp.status_code, 200)
+        data = resp.get_json()
+        self.assertIn("submissions", data)
+        self.assertEqual(len(data["submissions"]), 2)
+        titles = [s["title"] for s in data["submissions"]]
+        self.assertIn("投稿A", titles)
+        self.assertIn("投稿B", titles)
+
+    def test_admin_edit_submission(self) -> None:
+        """管理员编辑待审条目字段 → 数据更新。"""
+        self.client.post(
+            "/api/public/submissions",
+            json={
+                "title": "原始标题",
+                "targetUrl": "https://example.com/original",
+            },
+        )
+        self.login()
+        submissions = self.client.get("/api/admin/submissions").get_json()["submissions"]
+        sid = submissions[0]["id"]
+
+        resp = self.client.put(
+            f"/api/admin/submissions/{sid}",
+            json={
+                "title": "修改后的标题",
+                "author": "修改作者",
+                "targetUrl": "https://example.com/edited",
+            },
+        )
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.get_json()["submission"]["title"], "修改后的标题")
+
+        # 再次获取确认持久化
+        updated = self.client.get("/api/admin/submissions").get_json()["submissions"]
+        self.assertEqual(updated[0]["title"], "修改后的标题")
+
+    def test_approve_submission(self) -> None:
+        """通过投稿：entries 新增、submissions 移除、封面迁移。"""
+        # 上传封面到 pending
+        self.login()
+        upload_resp = self.client.post(
+            "/api/public/covers",
+            data={"file": (io.BytesIO(b"<svg></svg>"), "cover.svg")},
+            content_type="multipart/form-data",
+        )
+        self.assertEqual(upload_resp.status_code, 201)
+        pending_cover_path = upload_resp.get_json()["coverPath"]
+        pending_filename = pending_cover_path.rsplit("/", 1)[-1]
+
+        # 提交投稿（含封面）
+        self.client.post(
+            "/api/public/submissions",
+            json={
+                "title": "待通过条目",
+                "author": "作者",
+                "contentTags": ["模组"],
+                "flavorTags": [],
+                "summary": "",
+                "coverPath": pending_cover_path,
+                "targetUrl": "https://example.com/approve-me",
+            },
+        )
+
+        # 获取 submission id
+        submissions = self.client.get("/api/admin/submissions").get_json()["submissions"]
+        sid = submissions[0]["id"]
+
+        # 通过
+        approve_resp = self.client.post(
+            f"/api/admin/submissions/{sid}/approve"
+        )
+        self.assertEqual(approve_resp.status_code, 200)
+        self.assertIn("entry", approve_resp.get_json())
+
+        # submissions 应为空
+        self.assertEqual(
+            len(self.client.get("/api/admin/submissions").get_json()["submissions"]), 0
+        )
+
+        # entries 应有一条
+        entries = self.client.get("/api/admin/entries").get_json()["entries"]
+        approved = next(e for e in entries if e["title"] == "待通过条目")
+        self.assertEqual(approved["author"], "作者")
+        self.assertEqual(approved["likeCount"], 0)
+        self.assertEqual(approved["likedBy"], [])
+        self.assertTrue(approved["id"].startswith("dhm_"))
+
+        # 封面应从 pending 迁移到正式目录
+        # pending 目录下不应再有该文件
+        pending_file = self.covers_dir / "pending" / pending_filename
+        self.assertFalse(pending_file.exists(), "pending cover should be moved")
+
+        # 正式 covers 目录下应有该文件
+        final_file = self.covers_dir / pending_filename
+        self.assertTrue(final_file.exists(), "cover should be in main covers dir")
+
+    def test_reject_submission(self) -> None:
+        """驳回投稿：submissions 移除、pending 封面清理。"""
+        # 上传封面到 pending
+        self.login()
+        upload_resp = self.client.post(
+            "/api/public/covers",
+            data={"file": (io.BytesIO(b"<svg></svg>"), "reject_cover.svg")},
+            content_type="multipart/form-data",
+        )
+        pending_cover_path = upload_resp.get_json()["coverPath"]
+        pending_filename = pending_cover_path.rsplit("/", 1)[-1]
+
+        # 提交投稿
+        self.client.post(
+            "/api/public/submissions",
+            json={
+                "title": "待驳回条目",
+                "targetUrl": "https://example.com/reject-me",
+                "coverPath": pending_cover_path,
+            },
+        )
+        submissions = self.client.get("/api/admin/submissions").get_json()["submissions"]
+        sid = submissions[0]["id"]
+
+        # 驳回
+        reject_resp = self.client.delete(f"/api/admin/submissions/{sid}")
+        self.assertEqual(reject_resp.status_code, 200)
+
+        # submissions 应为空
+        self.assertEqual(
+            len(self.client.get("/api/admin/submissions").get_json()["submissions"]), 0
+        )
+
+        # entries 不应增加
+        entries = self.client.get("/api/admin/entries").get_json()["entries"]
+        self.assertFalse(any(e["title"] == "待驳回条目" for e in entries))
+
+        # pending 封面应被清理
+        pending_file = self.covers_dir / "pending" / pending_filename
+        self.assertFalse(pending_file.exists(), "pending cover should be deleted on reject")
+
+    def test_approved_entry_visible_publicly(self) -> None:
+        """通过后的条目在 /api/public/bootstrap 中可见。"""
+        self.login()
+        self.client.post(
+            "/api/public/submissions",
+            json={
+                "title": "公开可见条目",
+                "targetUrl": "https://example.com/public-visible",
+            },
+        )
+        submissions = self.client.get("/api/admin/submissions").get_json()["submissions"]
+        sid = submissions[0]["id"]
+
+        self.client.post(f"/api/admin/submissions/{sid}/approve")
+
+        # 公共接口应可见
+        bootstrap = self.client.get("/api/public/bootstrap")
+        entries = bootstrap.get_json()["entries"]
+        titles = [e["title"] for e in entries]
+        self.assertIn("公开可见条目", titles)
+
     def test_public_bootstrap_includes_like_count(self) -> None:
         self.login()
         self.client.post(
@@ -246,7 +504,7 @@ class MarketplaceServerTestCase(unittest.TestCase):
                 "flavorTags": [],
                 "recommendValue": 0,
                 "summary": "",
-                "coverPath": "/marketplace/covers/like_test.svg",
+                "coverPath": "/the-great-vault/covers/like_test.svg",
                 "targetUrl": "https://example.com/like_test",
             },
         )

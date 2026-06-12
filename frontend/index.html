@@ -1013,24 +1013,40 @@
       /* ── 工具栏：两行 ── */
       .toolbar {
         flex-wrap: wrap;
-        gap: 8px;
-        padding: 8px 10px;
+        gap: 6px;
+        padding: 8px 8px;
       }
       /* 第一行：搜索框独占 */
       .search-box {
         flex: 1 1 100%;
         order: 0;
       }
-      /* 第二行：内容标签 + 风味标签 + 主题切换 */
+      /* 第二行：全部按钮紧凑排列 */
       .tag-trigger {
         order: 1;
-        font-size: 12px;
-        padding: 7px 10px;
-        gap: 4px;
+        font-size: 11px;
+        padding: 5px 8px;
+        gap: 3px;
+      }
+      .tag-trigger-caret {
+        display: none;
+      }
+      .tag-trigger-count {
+        font-size: 10px;
+        padding: 1px 4px;
       }
       .theme-toggle {
         order: 2;
-        margin-left: auto;
+        margin-left: 0;
+        width: 30px;
+        height: 30px;
+        font-size: 14px;
+      }
+      .toolbar .btn--submit {
+        order: 2;
+        margin-left: 0;
+        padding: 5px 8px;
+        font-size: 11px;
       }
 
       /* 隐藏活跃筛选标签 */
@@ -1094,6 +1110,184 @@
         margin-top: 16px;
       }
     }
+
+    /* ══════════════════════════════════════════
+       Toast
+       ══════════════════════════════════════════ */
+    .toast {
+      position: fixed;
+      bottom: 32px;
+      left: 50%;
+      transform: translateX(-50%) translateY(120%);
+      padding: 12px 28px;
+      border-radius: var(--radius-md);
+      background: var(--bg-elevated);
+      color: var(--text-primary);
+      font-size: 14px;
+      border: 1px solid var(--border-gold);
+      box-shadow: var(--shadow-modal);
+      z-index: 10000;
+      transition: transform var(--transition-base);
+      pointer-events: none;
+      max-width: 480px;
+      text-align: center;
+    }
+    .toast.visible { transform: translateX(-50%) translateY(0); }
+    .toast.error { border-color: var(--crimson); color: var(--crimson-light); }
+    .toast.success { border-color: var(--gold-light); color: var(--gold-bright); }
+
+    /* ══════════════════════════════════════════
+       Submit Modal
+       ══════════════════════════════════════════ */
+    .modal-overlay {
+      position: fixed; inset: 0;
+      background: var(--overlay-bg);
+      backdrop-filter: blur(4px);
+      z-index: 1000;
+      display: flex; align-items: center; justify-content: center;
+      opacity: 0; pointer-events: none;
+      transition: opacity var(--transition-base);
+    }
+    .modal-overlay.visible { opacity: 1; pointer-events: all; }
+    .modal-panel {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-medium);
+      border-radius: var(--radius-lg);
+      width: 560px; max-width: 95vw; max-height: 92vh;
+      overflow-y: auto;
+      box-shadow: var(--shadow-modal);
+      padding: 0;
+    }
+    .modal-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 18px 24px;
+      border-bottom: 1px solid var(--divider);
+    }
+    .modal-title {
+      font-family: var(--font-display);
+      font-size: 18px; color: var(--gold);
+    }
+    .modal-close {
+      background: none; border: none; color: var(--text-muted);
+      font-size: 22px; cursor: pointer; padding: 4px 8px;
+      transition: color var(--transition-fast);
+    }
+    .modal-close:hover { color: var(--text-primary); }
+    .modal-body { padding: 20px 24px; }
+    .modal-footer {
+      display: flex; gap: 12px; justify-content: flex-end;
+      padding: 16px 24px; border-top: 1px solid var(--divider);
+    }
+
+    /* ── Form ── */
+    .form-group { margin-bottom: 16px; }
+    .form-group.full { grid-column: 1 / -1; }
+    .form-label {
+      display: block; font-size: 13px; color: var(--text-secondary);
+      margin-bottom: 6px;
+    }
+    .form-hint { color: var(--text-dim); font-size: 11px; }
+    .required { color: var(--crimson-light); }
+    .input, .textarea {
+      width: 100%; padding: 10px 12px;
+      background: var(--bg-input); color: var(--text-primary);
+      border: 1px solid var(--border-input); border-radius: var(--radius-md);
+      font-family: var(--font-body); font-size: 14px;
+      outline: none; transition: border-color var(--transition-fast);
+    }
+    .input:focus, .textarea:focus { border-color: var(--gold-dim); }
+    .textarea { min-height: 80px; resize: vertical; }
+
+    /* ── Cover Upload ── */
+    .cover-upload-area { display: flex; gap: 16px; align-items: flex-start; }
+    .cover-preview {
+      width: 100px; height: 133px;
+      border: 1px solid var(--border-medium); border-radius: var(--radius-sm);
+      overflow: hidden; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      background: var(--bg-deepest);
+    }
+    .cover-preview img { width: 100%; height: 100%; object-fit: cover; }
+    .cover-preview-placeholder { font-size: 36px; color: var(--text-dim); }
+    .cover-upload-controls { flex: 1; min-width: 0; }
+    .cropper-panel { display: none; margin-top: 12px; }
+    .cropper-panel.active { display: flex; flex-direction: column; gap: 10px; }
+    .cropper-main {
+      width: 100%; height: 300px;
+      background: var(--bg-deepest); border: 1px solid var(--border-medium);
+      border-radius: var(--radius-md); overflow: hidden;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .cropper-main canvas { display: block; max-width: 100%; max-height: 100%; }
+    .cropper-actions { display: flex; align-items: center; gap: 10px; }
+    .cropper-hint { font-size: 12px; color: var(--text-dim); flex: 1; }
+    .cover-upload-status { display: block; font-size: 12px; margin-top: 6px; }
+    .cover-upload-status.success { color: var(--gold-light); }
+    .cover-upload-status.error { color: var(--crimson-light); }
+
+    /* ── Chip Input ── */
+    .chip-input-wrap {
+      display: flex; flex-wrap: wrap; gap: 6px; align-items: center;
+      padding: 6px 10px;
+      background: var(--bg-input); border: 1px solid var(--border-input);
+      border-radius: var(--radius-md);
+      transition: border-color var(--transition-fast);
+      cursor: text;
+    }
+    .chip-input-wrap:focus-within { border-color: var(--gold-dim); }
+    .chip {
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 3px 8px;
+      background: var(--gold-dark); color: var(--gold-pale);
+      border: 1px solid var(--border-gold);
+      border-radius: var(--radius-sm); font-size: 12px;
+    }
+    .chip .chip-remove {
+      cursor: pointer; font-size: 14px; line-height: 1;
+      color: var(--gold-dim); transition: color var(--transition-fast);
+    }
+    .chip .chip-remove:hover { color: var(--text-primary); }
+    .chip-input {
+      flex: 1; min-width: 80px; border: none; outline: none;
+      background: transparent; color: var(--text-primary);
+      font-family: var(--font-body); font-size: 13px; padding: 4px 0;
+    }
+    .chip-input::placeholder { color: var(--text-dim); font-size: 12px; }
+
+    /* ── Buttons ── */
+    .btn {
+      padding: 10px 22px; border-radius: var(--radius-md);
+      font-family: var(--font-body); font-size: 14px; cursor: pointer;
+      border: 1px solid transparent;
+      transition: all var(--transition-fast);
+    }
+    .btn--gold {
+      background: var(--gold-dark); color: var(--gold-bright);
+      border-color: var(--border-gold);
+    }
+    .btn--gold:hover { background: var(--gold-dim); color: var(--gold-bright); }
+    .btn--ghost {
+      background: transparent; color: var(--text-secondary);
+      border-color: var(--border-medium);
+    }
+    .btn--ghost:hover { color: var(--text-primary); border-color: var(--border-hover); }
+    .btn--sm { padding: 5px 12px; font-size: 12px; }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    /* ── Submit Toolbar Btn ── */
+    .toolbar .btn--submit {
+      margin-left: auto;
+      background: var(--gold-dark); color: var(--gold-bright);
+      border-color: var(--border-gold); border-radius: var(--radius-md);
+      padding: 8px 14px; font-size: 13px;
+      font-family: var(--font-heading); cursor: pointer;
+      transition: all var(--transition-fast);
+      white-space: nowrap;
+    }
+    .toolbar .btn--submit:hover {
+      background: var(--gold-dim); color: var(--gold-bright);
+      border-color: var(--border-gold-strong);
+    }
   </style>
 </head>
 <body>
@@ -1138,6 +1332,7 @@
         <button class="theme-toggle" id="themeToggle" aria-label="切换亮色/暗色主题" title="切换主题">
           &#9788;
         </button>
+        <button class="btn--submit" id="submitEntryBtn">提交资源</button>
       </div>
       <div class="active-filters" id="activeFilters"></div>
 
@@ -1191,6 +1386,75 @@
       </div>
     </div>
   </div>
+
+  <!-- 投稿 Modal -->
+  <div class="modal-overlay" id="submitModalOverlay">
+    <div class="modal-panel">
+      <div class="modal-header">
+        <span class="modal-title">提交资源</span>
+        <button class="modal-close" id="submitModalClose" type="button">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group full">
+          <span class="form-label">封面图片</span>
+          <div class="cover-upload-area">
+            <div class="cover-preview" id="submitCoverPreview">
+              <span class="cover-preview-placeholder">&#9876;</span>
+            </div>
+            <div class="cover-upload-controls">
+              <input type="file" class="input" id="submitCoverFile" accept="image/png,image/jpeg,image/webp,image/gif">
+              <div class="cropper-panel" id="submitCropperPanel">
+                <div class="cropper-main" id="submitCropperMain">
+                  <canvas id="submitCropperCanvas"></canvas>
+                </div>
+                <div class="cropper-actions">
+                  <span class="cropper-hint">拖拽移动 · 滚轮缩放</span>
+                  <button class="btn btn--gold btn--sm" id="submitCropperCropBtn" type="button">确认裁剪</button>
+                  <button class="btn btn--ghost btn--sm" id="submitCropperCancelBtn" type="button">取消</button>
+                </div>
+              </div>
+              <span class="cover-upload-status" id="submitCoverStatus"></span>
+            </div>
+          </div>
+        </div>
+        <div class="form-group">
+          <span class="form-label"><span class="required">*</span> 标题</span>
+          <input class="input" id="submitTitle" placeholder="资源标题">
+        </div>
+        <div class="form-group">
+          <span class="form-label">作者</span>
+          <input class="input" id="submitAuthor" placeholder="制作者署名">
+        </div>
+        <div class="form-group">
+          <span class="form-label">内容标签 <span class="form-hint">— 描述内容类型</span></span>
+          <div class="chip-input-wrap" id="submitContentTags">
+            <input class="chip-input" placeholder="输入标签…">
+          </div>
+        </div>
+        <div class="form-group">
+          <span class="form-label">风味标签 <span class="form-hint">— 描述题材风格</span></span>
+          <div class="chip-input-wrap" id="submitFlavorTags">
+            <input class="chip-input" placeholder="输入标签…">
+          </div>
+        </div>
+        <div class="form-group">
+          <span class="form-label"><span class="required">*</span> 跳转链接</span>
+          <input class="input" id="submitTargetUrl" placeholder="https://…">
+        </div>
+        <div class="form-group full">
+          <span class="form-label">简介 <span class="form-hint">— 可选，悬停卡片时显示</span></span>
+          <textarea class="textarea" id="submitSummary" placeholder="简介…"></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn--ghost" id="submitModalCancelBtn" type="button">取消</button>
+        <button class="btn btn--gold" id="submitModalSaveBtn" type="button">提交</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div class="toast" id="toast"></div>
 
   <script>
   (function () {
@@ -1711,6 +1975,327 @@
     }
 
     window.addEventListener('scroll', onNavScroll, { passive: true });
+
+    /* ══════════════════════════════════════════
+       投稿系统
+       ══════════════════════════════════════════ */
+
+    // ── Toast ──
+    const toast = document.getElementById('toast');
+    let toastTimer = null;
+    function showToast(msg, type) {
+      toast.textContent = msg;
+      toast.className = 'toast visible' + (type ? ' ' + type : '');
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(function () { toast.classList.remove('visible'); }, 3000);
+    }
+
+    // ── DOM ──
+    const submitBtn = document.getElementById('submitEntryBtn');
+    const submitOverlay = document.getElementById('submitModalOverlay');
+    const submitClose = document.getElementById('submitModalClose');
+    const submitCancel = document.getElementById('submitModalCancelBtn');
+    const submitSave = document.getElementById('submitModalSaveBtn');
+    const submitCoverPreview = document.getElementById('submitCoverPreview');
+    const submitCoverFile = document.getElementById('submitCoverFile');
+    const submitCoverStatus = document.getElementById('submitCoverStatus');
+    const submitTitle = document.getElementById('submitTitle');
+    const submitAuthor = document.getElementById('submitAuthor');
+    const submitTargetUrl = document.getElementById('submitTargetUrl');
+    const submitSummary = document.getElementById('submitSummary');
+
+    let submitCoverPath = '';
+
+    // ── Chip Input ──
+    function bindChipInput(wrapId) {
+      var wrap = document.getElementById(wrapId);
+      if (!wrap) return;
+      var input = wrap.querySelector('.chip-input');
+      if (!input) return;
+
+      function makeChip(text) {
+        var span = document.createElement('span');
+        span.className = 'chip';
+        span.innerHTML = escHtml(text) + '<span class=\"chip-remove\" role=\"button\" tabindex=\"0\">&times;</span>';
+        span.querySelector('.chip-remove').addEventListener('click', function () {
+          span.remove();
+          input.focus();
+        });
+        return span;
+      }
+
+      input.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter' || e.key === ',') {
+          e.preventDefault();
+          var val = input.value.trim();
+          if (val) {
+            wrap.insertBefore(makeChip(val), input);
+            input.value = '';
+          }
+        }
+        if (e.key === 'Backspace' && input.value === '') {
+          var chips = wrap.querySelectorAll('.chip');
+          if (chips.length) { chips[chips.length - 1].remove(); }
+        }
+      });
+      wrap.addEventListener('click', function () { input.focus(); });
+    }
+    function getChipVals(wrapId) {
+      var chips = document.getElementById(wrapId).querySelectorAll('.chip');
+      return Array.from(chips).map(function (c) { return c.childNodes[0].textContent.trim(); });
+    }
+
+    bindChipInput('submitContentTags');
+    bindChipInput('submitFlavorTags');
+
+    // ── Cover Cropper ──
+    var submitCropperPanel = document.getElementById('submitCropperPanel');
+    var submitCropperCanvas = document.getElementById('submitCropperCanvas');
+    var submitCropperCtx = submitCropperCanvas.getContext('2d');
+    var submitCropperMain = document.getElementById('submitCropperMain');
+
+    var OUT_W = 600, OUT_H = 800;
+    var CANVAS_W = 360, CANVAS_H = 480;
+    submitCropperCanvas.width = CANVAS_W;
+    submitCropperCanvas.height = CANVAS_H;
+
+    var cropImg = null, cropScale = 1, cropIW = 0, cropIH = 0, cropOX = 0, cropOY = 0;
+    var cropX = 0, cropY = 0, cropW = 0, cropH = 0;
+    var dragging = false, dragStartX, dragStartY, dragStartCX, dragStartCY;
+
+    function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+
+    function drawCropper() {
+      if (!cropImg) return;
+      var ctx = submitCropperCtx;
+      ctx.clearRect(0, 0, CANVAS_W, CANVAS_H);
+      ctx.drawImage(cropImg, cropOX, cropOY, cropIW, cropIH);
+      ctx.fillStyle = 'rgba(0,0,0,0.55)';
+      ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(cropX, cropY, cropW, cropH);
+      ctx.clip();
+      ctx.clearRect(0, 0, CANVAS_W, CANVAS_H);
+      ctx.drawImage(cropImg, cropOX, cropOY, cropIW, cropIH);
+      ctx.restore();
+      ctx.strokeStyle = '#ddc078';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(cropX, cropY, cropW, cropH);
+      ctx.fillStyle = '#ddc078';
+      var cs = 8;
+      ctx.fillRect(cropX, cropY, cs, cs);
+      ctx.fillRect(cropX + cropW - cs, cropY, cs, cs);
+      ctx.fillRect(cropX, cropY + cropH - cs, cs, cs);
+      ctx.fillRect(cropX + cropW - cs, cropY + cropH - cs, cs, cs);
+      ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+      ctx.lineWidth = 0.5;
+      ctx.beginPath();
+      ctx.moveTo(cropX + cropW / 3, cropY); ctx.lineTo(cropX + cropW / 3, cropY + cropH);
+      ctx.moveTo(cropX + cropW * 2 / 3, cropY); ctx.lineTo(cropX + cropW * 2 / 3, cropY + cropH);
+      ctx.moveTo(cropX, cropY + cropH / 3); ctx.lineTo(cropX + cropW, cropY + cropH / 3);
+      ctx.moveTo(cropX, cropY + cropH * 2 / 3); ctx.lineTo(cropX + cropW, cropY + cropH * 2 / 3);
+      ctx.stroke();
+    }
+
+    function initCropBox() {
+      cropH = cropIH * 0.9;
+      cropW = cropH * 0.75;
+      if (cropW > cropIW) { cropW = cropIW; cropH = cropW / 0.75; }
+      cropX = cropOX + (cropIW - cropW) / 2;
+      cropY = cropOY + (cropIH - cropH) / 2;
+      drawCropper();
+    }
+
+    function applyZoom(ratio, cx, cy) {
+      var newH = clamp(cropH * ratio, 60, cropIH);
+      var newW = newH * 0.75;
+      var kx = cx !== undefined ? cx : cropX + cropW / 2;
+      var ky = cy !== undefined ? cy : cropY + cropH / 2;
+      var scale = newW / cropW;
+      cropW = newW; cropH = newH;
+      cropX = clamp(kx - (kx - cropX) * scale, cropOX, cropOX + cropIW - cropW);
+      cropY = clamp(ky - (ky - cropY) * scale, cropOY, cropOY + cropIH - cropH);
+      drawCropper();
+    }
+
+    function initCropper(file) {
+      var reader = new FileReader();
+      reader.onload = function (e) {
+        cropImg = new Image();
+        cropImg.onload = function () {
+          var scaleW = CANVAS_W / cropImg.width;
+          var scaleH = CANVAS_H / cropImg.height;
+          cropScale = Math.min(scaleW, scaleH);
+          cropIW = cropImg.width * cropScale;
+          cropIH = cropImg.height * cropScale;
+          cropOX = (CANVAS_W - cropIW) / 2;
+          cropOY = (CANVAS_H - cropIH) / 2;
+          initCropBox();
+          submitCropperPanel.classList.add('active');
+        };
+        cropImg.src = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    }
+
+    submitCoverFile.addEventListener('change', function () {
+      var file = submitCoverFile.files[0];
+      if (file) initCropper(file);
+    });
+
+    submitCropperMain.addEventListener('wheel', function (e) {
+      if (!cropImg) return;
+      e.preventDefault();
+      var rect = submitCropperMain.getBoundingClientRect();
+      var mx = (e.clientX - rect.left) * (CANVAS_W / rect.width);
+      var my = (e.clientY - rect.top) * (CANVAS_H / rect.height);
+      applyZoom(e.deltaY < 0 ? 1.1 : 0.9, mx, my);
+    }, { passive: false });
+
+    submitCropperMain.addEventListener('mousedown', function (e) {
+      if (!cropImg) return;
+      var rect = submitCropperMain.getBoundingClientRect();
+      var mx = (e.clientX - rect.left) * (CANVAS_W / rect.width);
+      var my = (e.clientY - rect.top) * (CANVAS_H / rect.height);
+      if (mx >= cropX && mx <= cropX + cropW && my >= cropY && my <= cropY + cropH) {
+        dragging = true;
+        dragStartX = mx; dragStartY = my;
+        dragStartCX = cropX; dragStartCY = cropY;
+        e.preventDefault();
+      }
+    });
+    window.addEventListener('mousemove', function (e) {
+      if (!dragging) return;
+      var rect = submitCropperMain.getBoundingClientRect();
+      var mx = (e.clientX - rect.left) * (CANVAS_W / rect.width);
+      var my = (e.clientY - rect.top) * (CANVAS_H / rect.height);
+      cropX = clamp(dragStartCX + (mx - dragStartX), cropOX, cropOX + cropIW - cropW);
+      cropY = clamp(dragStartCY + (my - dragStartY), cropOY, cropOY + cropIH - cropH);
+      drawCropper();
+    });
+    window.addEventListener('mouseup', function () { dragging = false; });
+
+    document.getElementById('submitCropperCropBtn').addEventListener('click', function () {
+      if (!cropImg) return;
+      var outCanvas = document.createElement('canvas');
+      outCanvas.width = OUT_W; outCanvas.height = OUT_H;
+      var octx = outCanvas.getContext('2d');
+      var sx = (cropX - cropOX) / cropScale;
+      var sy = (cropY - cropOY) / cropScale;
+      var sw = cropW / cropScale;
+      var sh = cropH / cropScale;
+      octx.drawImage(cropImg, sx, sy, sw, sh, 0, 0, OUT_W, OUT_H);
+
+      submitCoverStatus.textContent = '上传中…';
+      submitCoverStatus.className = 'cover-upload-status';
+      outCanvas.toBlob(function (blob) {
+        var fd = new FormData();
+        fd.append('file', blob, 'cover.webp');
+        fetch(API_BASE + '/api/public/covers', { method: 'POST', body: fd })
+          .then(function (res) {
+            if (!res.ok) return res.json().then(function (d) { throw new Error(d.error || '上传失败'); });
+            return res.json();
+          })
+          .then(function (data) {
+            submitCoverPath = data.coverPath;
+            submitCoverPreview.innerHTML = '<img src=\"' + data.coverPath + '\" alt=\"封面预览\">';
+            submitCoverStatus.textContent = '上传成功';
+            submitCoverStatus.className = 'cover-upload-status success';
+            cropImg = null;
+            submitCropperPanel.classList.remove('active');
+            submitCoverFile.value = '';
+          })
+          .catch(function (err) {
+            submitCoverStatus.textContent = err.message;
+            submitCoverStatus.className = 'cover-upload-status error';
+          });
+      }, 'image/webp', 0.85);
+    });
+
+    document.getElementById('submitCropperCancelBtn').addEventListener('click', function () {
+      cropImg = null;
+      submitCropperPanel.classList.remove('active');
+      submitCoverFile.value = '';
+      submitCropperCtx.clearRect(0, 0, CANVAS_W, CANVAS_H);
+    });
+
+    // ── Modal 开/关 ──
+    function openSubmitModal() {
+      submitOverlay.classList.add('visible');
+      document.body.style.overflow = 'hidden';
+    }
+
+    function closeSubmitModal() {
+      submitOverlay.classList.remove('visible');
+      document.body.style.overflow = '';
+      // 清空表单
+      submitTitle.value = '';
+      submitAuthor.value = '';
+      submitTargetUrl.value = '';
+      submitSummary.value = '';
+      submitCoverPath = '';
+      submitCoverPreview.innerHTML = '<span class=\"cover-preview-placeholder\">&#9876;</span>';
+      submitCoverFile.value = '';
+      submitCoverStatus.textContent = '';
+      cropImg = null;
+      submitCropperPanel.classList.remove('active');
+      submitCropperCtx.clearRect(0, 0, CANVAS_W, CANVAS_H);
+      // 清空标签
+      ['submitContentTags', 'submitFlavorTags'].forEach(function (id) {
+        var wrap = document.getElementById(id);
+        wrap.querySelectorAll('.chip').forEach(function (c) { c.remove(); });
+      });
+    }
+
+    submitBtn.addEventListener('click', openSubmitModal);
+    submitClose.addEventListener('click', closeSubmitModal);
+    submitCancel.addEventListener('click', closeSubmitModal);
+    submitOverlay.addEventListener('click', function (e) {
+      if (e.target === submitOverlay) closeSubmitModal();
+    });
+
+    // ── 提交流程 ──
+    submitSave.addEventListener('click', async function () {
+      var title = submitTitle.value.trim();
+      var author = submitAuthor.value.trim();
+      var cTags = getChipVals('submitContentTags');
+      var fTags = getChipVals('submitFlavorTags');
+      var targetUrl = submitTargetUrl.value.trim();
+      var summary = submitSummary.value.trim();
+
+      if (!title) { showToast('标题不能为空', 'error'); return; }
+      if (!targetUrl) { showToast('跳转链接不能为空', 'error'); return; }
+
+      var body = {
+        title: title,
+        author: author,
+        contentTags: cTags,
+        flavorTags: fTags,
+        summary: summary,
+        targetUrl: targetUrl,
+        coverPath: submitCoverPath,
+      };
+
+      submitSave.disabled = true;
+      try {
+        var res = await fetch(API_BASE + '/api/public/submissions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+          body: JSON.stringify(body),
+        });
+        var data = await res.json();
+        if (!res.ok) throw new Error(data.error || '提交失败');
+        closeSubmitModal();
+        showToast('提交成功，等待审核', 'success');
+      } catch (err) {
+        showToast(err.message, 'error');
+      } finally {
+        submitSave.disabled = false;
+      }
+    });
+
+    /* ══════════════════════════════════════════ */
 
     async function init() {
       updateDisplayMode();
