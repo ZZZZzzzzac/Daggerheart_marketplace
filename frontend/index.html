@@ -1137,9 +1137,9 @@
     .toast.success { border-color: var(--gold-light); color: var(--gold-bright); }
 
     /* ══════════════════════════════════════════
-       Submit Modal
+       Submit Modal (scoped under #submitModalOverlay)
        ══════════════════════════════════════════ */
-    .modal-overlay {
+    #submitModalOverlay.modal-overlay {
       position: fixed; inset: 0;
       background: var(--overlay-bg);
       backdrop-filter: blur(4px);
@@ -1148,8 +1148,8 @@
       opacity: 0; pointer-events: none;
       transition: opacity var(--transition-base);
     }
-    .modal-overlay.visible { opacity: 1; pointer-events: all; }
-    .modal-panel {
+    #submitModalOverlay.visible { opacity: 1; pointer-events: all; }
+    #submitModalOverlay .modal-panel {
       background: var(--bg-surface);
       border: 1px solid var(--border-medium);
       border-radius: var(--radius-lg);
@@ -1158,75 +1158,80 @@
       box-shadow: var(--shadow-modal);
       padding: 0;
     }
-    .modal-header {
+    #submitModalOverlay .modal-header {
       display: flex; align-items: center; justify-content: space-between;
       padding: 18px 24px;
       border-bottom: 1px solid var(--divider);
     }
-    .modal-title {
+    #submitModalOverlay .modal-title {
       font-family: var(--font-display);
       font-size: 18px; color: var(--gold);
     }
-    .modal-close {
+    #submitModalOverlay .modal-close {
       background: none; border: none; color: var(--text-muted);
       font-size: 22px; cursor: pointer; padding: 4px 8px;
       transition: color var(--transition-fast);
     }
-    .modal-close:hover { color: var(--text-primary); }
-    .modal-body { padding: 20px 24px; }
-    .modal-footer {
+    #submitModalOverlay .modal-close:hover { color: var(--text-primary); }
+    #submitModalOverlay .modal-body {
+      display: block; flex: none; overflow: visible; min-height: auto;
+      padding: 20px 24px;
+    }
+    #submitModalOverlay .modal-footer {
       display: flex; gap: 12px; justify-content: flex-end;
       padding: 16px 24px; border-top: 1px solid var(--divider);
     }
 
     /* ── Form ── */
-    .form-group { margin-bottom: 16px; }
-    .form-group.full { grid-column: 1 / -1; }
-    .form-label {
+    #submitModalOverlay .form-group { margin-bottom: 16px; }
+    #submitModalOverlay .form-group.full { grid-column: 1 / -1; }
+    #submitModalOverlay .form-label {
       display: block; font-size: 13px; color: var(--text-secondary);
       margin-bottom: 6px;
     }
-    .form-hint { color: var(--text-dim); font-size: 11px; }
-    .required { color: var(--crimson-light); }
-    .input, .textarea {
+    #submitModalOverlay .form-hint { color: var(--text-dim); font-size: 11px; }
+    #submitModalOverlay .required { color: var(--crimson-light); }
+    #submitModalOverlay .input,
+    #submitModalOverlay .textarea {
       width: 100%; padding: 10px 12px;
       background: var(--bg-input); color: var(--text-primary);
       border: 1px solid var(--border-input); border-radius: var(--radius-md);
       font-family: var(--font-body); font-size: 14px;
       outline: none; transition: border-color var(--transition-fast);
     }
-    .input:focus, .textarea:focus { border-color: var(--gold-dim); }
-    .textarea { min-height: 80px; resize: vertical; }
+    #submitModalOverlay .input:focus,
+    #submitModalOverlay .textarea:focus { border-color: var(--gold-dim); }
+    #submitModalOverlay .textarea { min-height: 80px; resize: vertical; }
 
     /* ── Cover Upload ── */
-    .cover-upload-area { display: flex; gap: 16px; align-items: flex-start; }
-    .cover-preview {
+    #submitModalOverlay .cover-upload-area { display: flex; gap: 16px; align-items: flex-start; }
+    #submitModalOverlay .cover-preview {
       width: 100px; height: 133px;
       border: 1px solid var(--border-medium); border-radius: var(--radius-sm);
       overflow: hidden; flex-shrink: 0;
       display: flex; align-items: center; justify-content: center;
       background: var(--bg-deepest);
     }
-    .cover-preview img { width: 100%; height: 100%; object-fit: cover; }
-    .cover-preview-placeholder { font-size: 36px; color: var(--text-dim); }
-    .cover-upload-controls { flex: 1; min-width: 0; }
-    .cropper-panel { display: none; margin-top: 12px; }
-    .cropper-panel.active { display: flex; flex-direction: column; gap: 10px; }
-    .cropper-main {
+    #submitModalOverlay .cover-preview img { width: 100%; height: 100%; object-fit: cover; }
+    #submitModalOverlay .cover-preview-placeholder { font-size: 36px; color: var(--text-dim); }
+    #submitModalOverlay .cover-upload-controls { flex: 1; min-width: 0; }
+    #submitModalOverlay .cropper-panel { display: none; margin-top: 12px; }
+    #submitModalOverlay .cropper-panel.active { display: flex; flex-direction: column; gap: 10px; }
+    #submitModalOverlay .cropper-main {
       width: 100%; height: 300px;
       background: var(--bg-deepest); border: 1px solid var(--border-medium);
       border-radius: var(--radius-md); overflow: hidden;
       display: flex; align-items: center; justify-content: center;
     }
-    .cropper-main canvas { display: block; max-width: 100%; max-height: 100%; }
-    .cropper-actions { display: flex; align-items: center; gap: 10px; }
-    .cropper-hint { font-size: 12px; color: var(--text-dim); flex: 1; }
-    .cover-upload-status { display: block; font-size: 12px; margin-top: 6px; }
-    .cover-upload-status.success { color: var(--gold-light); }
-    .cover-upload-status.error { color: var(--crimson-light); }
+    #submitModalOverlay .cropper-main canvas { display: block; max-width: 100%; max-height: 100%; }
+    #submitModalOverlay .cropper-actions { display: flex; align-items: center; gap: 10px; }
+    #submitModalOverlay .cropper-hint { font-size: 12px; color: var(--text-dim); flex: 1; }
+    #submitModalOverlay .cover-upload-status { display: block; font-size: 12px; margin-top: 6px; }
+    #submitModalOverlay .cover-upload-status.success { color: var(--gold-light); }
+    #submitModalOverlay .cover-upload-status.error { color: var(--crimson-light); }
 
     /* ── Chip Input ── */
-    .chip-input-wrap {
+    #submitModalOverlay .chip-input-wrap {
       display: flex; flex-wrap: wrap; gap: 6px; align-items: center;
       padding: 6px 10px;
       background: var(--bg-input); border: 1px solid var(--border-input);
@@ -1234,45 +1239,45 @@
       transition: border-color var(--transition-fast);
       cursor: text;
     }
-    .chip-input-wrap:focus-within { border-color: var(--gold-dim); }
-    .chip {
+    #submitModalOverlay .chip-input-wrap:focus-within { border-color: var(--gold-dim); }
+    #submitModalOverlay .chip {
       display: inline-flex; align-items: center; gap: 4px;
       padding: 3px 8px;
       background: var(--gold-dark); color: var(--gold-pale);
       border: 1px solid var(--border-gold);
       border-radius: var(--radius-sm); font-size: 12px;
     }
-    .chip .chip-remove {
+    #submitModalOverlay .chip .chip-remove {
       cursor: pointer; font-size: 14px; line-height: 1;
       color: var(--gold-dim); transition: color var(--transition-fast);
     }
-    .chip .chip-remove:hover { color: var(--text-primary); }
-    .chip-input {
+    #submitModalOverlay .chip .chip-remove:hover { color: var(--text-primary); }
+    #submitModalOverlay .chip-input {
       flex: 1; min-width: 80px; border: none; outline: none;
       background: transparent; color: var(--text-primary);
       font-family: var(--font-body); font-size: 13px; padding: 4px 0;
     }
-    .chip-input::placeholder { color: var(--text-dim); font-size: 12px; }
+    #submitModalOverlay .chip-input::placeholder { color: var(--text-dim); font-size: 12px; }
 
     /* ── Buttons ── */
-    .btn {
+    #submitModalOverlay .btn {
       padding: 10px 22px; border-radius: var(--radius-md);
       font-family: var(--font-body); font-size: 14px; cursor: pointer;
       border: 1px solid transparent;
       transition: all var(--transition-fast);
     }
-    .btn--gold {
+    #submitModalOverlay .btn--gold {
       background: var(--gold-dark); color: var(--gold-bright);
       border-color: var(--border-gold);
     }
-    .btn--gold:hover { background: var(--gold-dim); color: var(--gold-bright); }
-    .btn--ghost {
+    #submitModalOverlay .btn--gold:hover { background: var(--gold-dim); color: var(--gold-bright); }
+    #submitModalOverlay .btn--ghost {
       background: transparent; color: var(--text-secondary);
       border-color: var(--border-medium);
     }
-    .btn--ghost:hover { color: var(--text-primary); border-color: var(--border-hover); }
-    .btn--sm { padding: 5px 12px; font-size: 12px; }
-    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    #submitModalOverlay .btn--ghost:hover { color: var(--text-primary); border-color: var(--border-hover); }
+    #submitModalOverlay .btn--sm { padding: 5px 12px; font-size: 12px; }
+    #submitModalOverlay .btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
     /* ── Submit Toolbar Btn ── */
     .toolbar .btn--submit {
