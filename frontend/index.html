@@ -459,7 +459,6 @@
       letter-spacing: 0.1em;
       margin-top: 40px;
       padding-bottom: 8px;
-      border-bottom: 2px solid var(--border-gold-strong);
       scroll-margin-top: 90px;
     }
     .section-header::after {
@@ -1823,7 +1822,7 @@
         let gridHtml = '', navHtml = '';
         for (const s of sections) {
           if (!s.entries.length) continue;
-          gridHtml += `<div class="section-header" id="${s.id}">${s.label}</div>`;
+          gridHtml += `<div class="section-header" id="${s.id}">${s.label} · ${s.entries.length}</div>`;
           gridHtml += s.entries.map((e, i) => renderCard(e, i)).join('');
           navHtml += `<a href="#${s.id}" class="section-nav-link"><span class="nav-label-full">${s.label}</span><span class="nav-label-short">${s.short}</span></a>`;
         }
