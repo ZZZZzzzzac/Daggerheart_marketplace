@@ -8,7 +8,7 @@ import re
 from datetime import datetime, timezone
 from functools import wraps
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 from urllib.parse import urlparse
 from uuid import uuid4
 
@@ -16,7 +16,7 @@ from flask import Flask, jsonify, request, send_from_directory, session
 from werkzeug.utils import secure_filename
 
 from server import config
-from server.mailer import send_rejection_notice
+from server.mailer import send_approval_notice, send_rejection_notice
 
 
 ROOT_DIR = config.ROOT_DIR
@@ -366,7 +366,8 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         }
         entries.append(entry)
         save_entries(app, entries)
-        return jsonify({"entry": entry})
+        notification = send_submission_approval_notification(app, submission)
+        return jsonify({"entry": entry, "notification": notification})
 
     @app.delete("/api/admin/submissions/<submission_id>")
     @require_admin_session
@@ -831,10 +832,37 @@ def delete_pending_cover_file(app: Flask, cover_path: str) -> None:
         candidate.unlink()
 
 
+def send_submission_approval_notification(
+    app: Flask,
+    submission: dict[str, Any],
+) -> dict[str, str]:
+    return send_submission_mail_notification(
+        app=app,
+        submission=submission,
+        sender_kwargs={},
+        send_notice=send_approval_notice,
+    )
+
+
 def send_submission_rejection_notification(
     app: Flask,
     submission: dict[str, Any],
     review_note: str,
+) -> dict[str, str]:
+    return send_submission_mail_notification(
+        app=app,
+        submission=submission,
+        sender_kwargs={"review_note": review_note},
+        send_notice=send_rejection_notice,
+    )
+
+
+def send_submission_mail_notification(
+    *,
+    app: Flask,
+    submission: dict[str, Any],
+    sender_kwargs: dict[str, Any],
+    send_notice: Callable[..., dict[str, str]],
 ) -> dict[str, str]:
     recipient = normalize_optional_text(submission.get("feedbackEmail"))
     if not recipient:
@@ -846,22 +874,22 @@ def send_submission_rejection_notification(
             result = sender(
                 recipient=recipient,
                 title=submission.get("title", ""),
-                review_note=review_note,
+                **sender_kwargs,
             )
             return normalize_notification_result(result)
-        except Exception as exc:  # noqa: BLE001 - 邮件失败不能阻塞驳回
+        except Exception as exc:  # noqa: BLE001 - 邮件失败不能阻塞审核操作
             return {
                 "status": "failed",
                 "reason": "send_failed",
                 "message": str(exc)[:200] or exc.__class__.__name__,
             }
 
-    return send_rejection_notice(
+    return send_notice(
         app_config=app.config,
         secret_dir=Path(app.config["SECRETS_DIR"]),
         recipient=recipient,
         title=submission.get("title", ""),
-        review_note=review_note,
+        **sender_kwargs,
     )
 
 

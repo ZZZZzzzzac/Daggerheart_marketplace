@@ -1084,8 +1084,9 @@
         okClass: 'btn--success',
         onConfirm: async function () {
           try {
-            await api('/api/admin/submissions/' + id + '/approve', { method: 'POST' });
-            showToast('已通过「' + s.title + '」');
+            var result = await api('/api/admin/submissions/' + id + '/approve', { method: 'POST' });
+            var failed = result.notification && result.notification.status === 'failed';
+            showToast(formatApproveToast(result.notification), failed ? 'error' : '');
             submissions = submissions.filter(function (x) { return x.id !== id; });
             renderSubmissionList();
             updateSubmissionBadge();
@@ -1163,6 +1164,19 @@
       rejectOverlay.classList.remove('visible');
       pendingRejectId = null;
       rejectNote.value = '';
+    }
+
+    function formatApproveToast(notification) {
+      if (!notification || notification.status === 'sent') return '已通过，邮件已发送';
+      if (notification.status === 'skipped') {
+        if (notification.reason === 'no_feedback_email') return '已通过，未留邮箱';
+        if (notification.reason === 'not_configured') return '已通过，SMTP 未配置';
+        return '已通过，邮件已跳过';
+      }
+      if (notification.status === 'failed') {
+        return '已通过，邮件发送失败：' + (notification.message || '未知错误');
+      }
+      return '已通过';
     }
 
     function formatRejectToast(notification) {

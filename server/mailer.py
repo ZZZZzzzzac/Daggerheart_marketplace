@@ -74,6 +74,30 @@ def send_rejection_notice(
         }
 
 
+def send_approval_notice(
+    *,
+    app_config: dict[str, Any],
+    secret_dir: Path,
+    recipient: str,
+    title: str,
+) -> dict[str, str]:
+    if not recipient:
+        return {"status": "skipped", "reason": "no_feedback_email"}
+
+    try:
+        smtp_config = load_smtp_config(app_config, secret_dir)
+        if smtp_config is None:
+            return {"status": "skipped", "reason": "not_configured"}
+        send_email(smtp_config, build_approval_message(smtp_config, recipient, title))
+        return {"status": "sent"}
+    except Exception as exc:  # noqa: BLE001 - 邮件失败不能阻塞收录
+        return {
+            "status": "failed",
+            "reason": "send_failed",
+            "message": safe_error_message(exc),
+        }
+
+
 def load_smtp_config(app_config: dict[str, Any], secret_dir: Path) -> SmtpConfig | None:
     host = read_config_value(app_config, secret_dir, "SMTP_HOST")
     port_text = read_config_value(app_config, secret_dir, "SMTP_PORT")
@@ -158,18 +182,42 @@ def build_rejection_message(
 ) -> EmailMessage:
     note = review_note or "管理员未填写具体审阅意见。"
     message = EmailMessage()
-    message["Subject"] = f"宏伟宝库投稿未通过：{title}"
+    message["Subject"] = f"宏伟宝库投稿需要调整：{title}"
     message["From"] = formataddr((smtp_config.from_name, smtp_config.from_email))
     message["To"] = recipient
     message.set_content(
         "\n".join(
             [
-                f"你的投稿「{title}」未通过审核。",
+                f"你好，感谢你向匕首之心-宏伟宝库提交「{title}」。",
                 "",
-                "审阅意见：",
+                "不过在收录之前，我们希望你做一些调整：",
+                "",
                 note,
                 "",
-                "你可以根据意见修改后重新提交。",
+                "你可以根据意见修改后重新提交，期待再次看到你的作品。",
+            ]
+        )
+    )
+    return message
+
+
+def build_approval_message(
+    smtp_config: SmtpConfig,
+    recipient: str,
+    title: str,
+) -> EmailMessage:
+    message = EmailMessage()
+    message["Subject"] = f"宏伟宝库投稿已收录：{title}"
+    message["From"] = formataddr((smtp_config.from_name, smtp_config.from_email))
+    message["To"] = recipient
+    message.set_content(
+        "\n".join(
+            [
+                f"你好，感谢你向匕首之心-宏伟宝库提交「{title}」。",
+                "",
+                "你的投稿已经成功收录，现在可以在宏伟宝库中看到了。",
+                "",
+                "感谢你的分享，期待以后继续看到你的作品。",
             ]
         )
     )

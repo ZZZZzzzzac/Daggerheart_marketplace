@@ -8,7 +8,7 @@ from unittest.mock import patch
 from uuid import uuid4
 
 from server.app import create_app
-from server.mailer import load_smtp_config, send_rejection_notice
+from server.mailer import load_smtp_config, send_approval_notice, send_rejection_notice
 
 
 class MarketplaceServerTestCase(unittest.TestCase):
@@ -427,6 +427,10 @@ class MarketplaceServerTestCase(unittest.TestCase):
         )
         self.assertEqual(approve_resp.status_code, 200)
         self.assertIn("entry", approve_resp.get_json())
+        self.assertEqual(
+            approve_resp.get_json()["notification"],
+            {"status": "skipped", "reason": "not_configured"},
+        )
 
         # submissions 应为空
         self.assertEqual(
@@ -454,6 +458,62 @@ class MarketplaceServerTestCase(unittest.TestCase):
         # 正式 covers 目录下应有该文件
         final_file = self.covers_dir / pending_filename
         self.assertTrue(final_file.exists(), "cover should be in main covers dir")
+
+    def test_approve_submission_sends_feedback_email_when_configured(self) -> None:
+        """通过带反馈邮箱的投稿 → 调用邮件发送器。"""
+        sent: list[dict[str, str]] = []
+
+        def fake_mailer(**kwargs):
+            sent.append(kwargs)
+            return {"status": "sent"}
+
+        self.app.config["MAIL_SENDER"] = fake_mailer
+        self.client.post(
+            "/api/public/submissions",
+            json={
+                "title": "可收录投稿",
+                "targetUrl": "https://example.com/approved",
+                "feedbackEmail": "submitter@example.com",
+            },
+        )
+        self.login()
+        sid = self.client.get("/api/admin/submissions").get_json()["submissions"][0]["id"]
+
+        resp = self.client.post(f"/api/admin/submissions/{sid}/approve")
+
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.get_json()["notification"], {"status": "sent"})
+        self.assertEqual(len(sent), 1)
+        self.assertEqual(sent[0]["recipient"], "submitter@example.com")
+        self.assertEqual(sent[0]["title"], "可收录投稿")
+        self.assertNotIn("review_note", sent[0])
+
+    def test_approve_submission_reports_mail_failure_without_rollback(self) -> None:
+        """通过邮件失败不回滚收录，响应返回 failed 状态。"""
+        def failing_mailer(**_kwargs):
+            raise RuntimeError("SMTP auth failed")
+
+        self.app.config["MAIL_SENDER"] = failing_mailer
+        self.client.post(
+            "/api/public/submissions",
+            json={
+                "title": "通过但邮件失败投稿",
+                "targetUrl": "https://example.com/approve-mail-fail",
+                "feedbackEmail": "submitter@example.com",
+            },
+        )
+        self.login()
+        sid = self.client.get("/api/admin/submissions").get_json()["submissions"][0]["id"]
+
+        resp = self.client.post(f"/api/admin/submissions/{sid}/approve")
+
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.get_json()["notification"]["status"], "failed")
+        self.assertEqual(resp.get_json()["notification"]["reason"], "send_failed")
+        entries = self.client.get("/api/admin/entries").get_json()["entries"]
+        self.assertTrue(any(e["title"] == "通过但邮件失败投稿" for e in entries))
+        remaining = self.client.get("/api/admin/submissions").get_json()["submissions"]
+        self.assertEqual(remaining, [])
 
     def test_reject_submission(self) -> None:
         """驳回投稿：submissions 移除、pending 封面清理。"""
@@ -657,7 +717,37 @@ class MarketplaceServerTestCase(unittest.TestCase):
         mocked_send.assert_called_once()
         message = mocked_send.call_args.args[1]
         self.assertIn("待修改资源", message["Subject"])
+        self.assertIn("需要调整", message["Subject"])
+        self.assertIn("感谢你向匕首之心-宏伟宝库提交", message.get_content())
+        self.assertIn("不过在收录之前，我们希望你做一些调整", message.get_content())
         self.assertIn("请补充可访问链接。", message.get_content())
+        self.assertNotIn("未通过", message["Subject"] + message.get_content())
+
+    def test_mailer_sends_approval_notice_with_soft_content(self) -> None:
+        """SMTP 配置完整时构造收录成功邮件并调用发送函数。"""
+        app_config = {
+            "SMTP_HOST": "smtp.example.com",
+            "SMTP_PORT": "587",
+            "SMTP_USERNAME": "sender@example.com",
+            "SMTP_PASSWORD": "app-password",
+            "SMTP_FROM": "",
+            "SMTP_FROM_NAME": "宏伟宝库测试",
+            "SMTP_SECURITY": "starttls",
+        }
+        with patch("server.mailer.send_email") as mocked_send:
+            result = send_approval_notice(
+                app_config=app_config,
+                secret_dir=self.secrets_dir,
+                recipient="submitter@example.com",
+                title="已收录资源",
+            )
+
+        self.assertEqual(result, {"status": "sent"})
+        mocked_send.assert_called_once()
+        message = mocked_send.call_args.args[1]
+        self.assertIn("已收录资源", message["Subject"])
+        self.assertIn("已收录", message["Subject"])
+        self.assertIn("你的投稿已经成功收录", message.get_content())
 
     def test_approved_entry_visible_publicly(self) -> None:
         """通过后的条目在 /api/public/bootstrap 中可见。"""
