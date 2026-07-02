@@ -1117,7 +1117,7 @@
       position: fixed;
       bottom: 32px;
       left: 50%;
-      transform: translateX(-50%) translateY(120%);
+      transform: translateX(-50%) translateY(calc(100% + 48px));
       padding: 12px 28px;
       border-radius: var(--radius-md);
       background: var(--bg-elevated);
@@ -1126,12 +1126,19 @@
       border: 1px solid var(--border-gold);
       box-shadow: var(--shadow-modal);
       z-index: 10000;
-      transition: transform var(--transition-base);
+      opacity: 0;
+      visibility: hidden;
+      transition: transform var(--transition-base), opacity var(--transition-base), visibility 0s linear var(--transition-base);
       pointer-events: none;
       max-width: 480px;
       text-align: center;
     }
-    .toast.visible { transform: translateX(-50%) translateY(0); }
+    .toast.visible {
+      opacity: 1;
+      visibility: visible;
+      transform: translateX(-50%) translateY(0);
+      transition: transform var(--transition-base), opacity var(--transition-base), visibility 0s;
+    }
     .toast.error { border-color: var(--crimson); color: var(--crimson-light); }
     .toast.success { border-color: var(--gold-light); color: var(--gold-bright); }
 
@@ -1932,11 +1939,22 @@
     // ── Toast ──
     const toast = document.getElementById('toast');
     let toastTimer = null;
+    let toastClearTimer = null;
     function showToast(msg, type) {
-      toast.textContent = msg;
-      toast.className = 'toast visible' + (type ? ' ' + type : '');
+      var text = String(msg || '').trim();
       clearTimeout(toastTimer);
-      toastTimer = setTimeout(function () { toast.classList.remove('visible'); }, 3000);
+      clearTimeout(toastClearTimer);
+      if (!text) {
+        toast.textContent = '';
+        toast.className = 'toast';
+        return;
+      }
+      toast.textContent = text;
+      toast.className = 'toast visible' + (type ? ' ' + type : '');
+      toastTimer = setTimeout(function () {
+        toast.classList.remove('visible');
+        toastClearTimer = setTimeout(function () { toast.textContent = ''; }, 260);
+      }, 3000);
     }
 
     // ── DOM ──
