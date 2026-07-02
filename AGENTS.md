@@ -80,22 +80,39 @@
 
 ## 验证命令
 
-- 后端测试：`python -m unittest discover -s server/tests -v`
-- 语法检查：`python scripts/check_python_syntax.py`
+- Worker 语法检查：`npm run check:worker`
+- Worker 测试：`npm run test:worker`
+- 远端 D1 冒烟：`npx wrangler d1 execute the-great-vault --remote --command "SELECT COUNT(*) AS entries FROM entries;"`
+- 线上健康检查：`Invoke-WebRequest -Uri https://dhvault.top/api/health`
+- Flask 参考回归：`python -m unittest discover -s server/tests -v`
+- Python 语法检查：`python scripts/check_python_syntax.py`
 
-## 服务器部署
+## 生产部署
 
 | 项 | 值 |
 |---|---|
-| SSH | `ssh -i .ssh/ssh-key-2026-03-20.key ubuntu@151.145.76.60` |
 | 仓库 | `ZZZZzzzzac/Daggerheart_marketplace` |
-| 服务器路径 | `/var/www/the-great-vault` |
-| Flask 服务 | `daggerheart_marketplace.service`，监听 `127.0.0.1:5090` |
-| 更新脚本 | `/home/ubuntu/update_repos.sh`（含本仓库，cron 每天 UTC 04:00 自动拉取） |
+| Pages 项目 | `the-great-vault` |
+| 生产分支 | `master` |
+| 生产域名 | `https://dhvault.top` |
+| 备用域名 | `https://the-great-vault.pages.dev` |
+| 运行时 | Cloudflare Pages + advanced mode Worker |
+| 数据 | D1：`the-great-vault`；R2：`the-great-vault-covers` |
 
 ## 推送流程
 
-用户说"推送"时：本地 commit → push → SSH 到服务器执行 `bash /home/ubuntu/update_repos.sh`（不加 sudo），若 systemd 服务有变更则 `sudo systemctl restart daggerheart_marketplace.service`。
+用户说"推送"时：本地 commit → push 到远端仓库；`master` 分支由 Cloudflare Pages 自动拉取并部署生产。推送后优先检查 Pages 部署状态与线上 API 健康，不再默认走 VPS `git pull + systemd restart` 流程。
+
+建议最小验收顺序：
+
+1. `npx wrangler pages deployment list --project-name the-great-vault`
+2. `Invoke-WebRequest -Uri https://dhvault.top/api/health`
+3. `Invoke-WebRequest -Uri https://dhvault.top/api/public/bootstrap`
+
+## 旧 Flask 路径
+
+- `server/` 与 `server/tests/` 当前保留为旧实现参考和行为对照，不再视为生产主路径。
+- 只有在需要核对历史行为、对比迁移差异、或准备彻底移除 Flask 时，才回看 VPS / systemd 相关信息。
 
 ## 改动纪律
 

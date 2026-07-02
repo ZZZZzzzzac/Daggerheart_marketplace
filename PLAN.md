@@ -141,8 +141,8 @@
 
 它们分别负责：
 
-- 拉取全部条目和两套标签计数
-- 拉取“当前 IP 已点赞过哪些条目”
+- 拉取全部公开条目、两套标签计数和每个条目的 `likeCount`
+- 后台拉取“当前 IP 已点赞过哪些条目”，不阻塞首屏渲染
 
 前端把状态统一放在一个 `state` 对象里，主要字段包括：
 
@@ -259,16 +259,19 @@
 
 实现方式：
 
-- 前端初始化时先取 `/api/public/likes`，得到当前 IP 的 `likedEntryIds`
+- 前端初始化时先取 `/api/public/bootstrap` 渲染目录，再后台取 `/api/public/likes` 得到当前 IP 的 `likedEntryIds`
 - 点击心形按钮后，发 `POST /api/public/like/<entry_id>`
 - 后端根据 IP 哈希判断是新增还是取消
-- 更新条目里的 `likedBy` 和 `likeCount`
+- 更新 `entry_likes` 表，并返回最新 `likeCount`
 - 前端只做局部 UI 更新，不强制整页重载
 
-点赞数据不单独存表，而是直接跟着条目存进 `entries.json`：
+Worker 生产路径中，点赞数据单独存入 D1 `entry_likes` 表：
 
-- `likedBy`：IP 哈希数组
-- `likeCount`：数组长度对应的计数
+- `entry_id`：条目 ID
+- `ip_hash`：IP 哈希
+- `created_at`：点赞时间
+
+公开目录接口只返回聚合后的 `likeCount`，不返回 `likedBy` / IP 哈希数组。
 
 IP 哈希规则也已经固化：
 
@@ -447,7 +450,6 @@ IP 哈希规则也已经固化：
   "flavorTags": ["武侠"],
   "recommendValue": 1,
   "likeCount": 0,
-  "likedBy": [],
   "summary": "简介",
   "coverPath": "/marketplace/covers/cover_xxx.webp",
   "targetUrl": "https://example.com",
@@ -631,7 +633,8 @@ ID 规则：
 
 数据行为变化：
 
-- 公开条目仍返回 `likeCount` 与 `likedBy`，但 D1 内部将点赞拆为 `entry_likes` 表。
+- 公开条目返回 `likeCount`，不返回 `likedBy`；D1 内部将点赞拆为 `entry_likes` 表并通过 SQL 聚合计数。
+- `/api/public/bootstrap`、`/api/public/entries`、`/api/public/tags` 走短 TTL 边缘缓存；`/api/public/likes` 保持按当前 IP 个性化且不共享缓存。
 - 封面上传改写到 R2，公开路径仍保持 `/the-great-vault/covers/<file>` 和 `/the-great-vault/covers/pending/<file>`。
 - Worker 使用 Resend HTTP API 发送通过、投稿驳回和已发布资源复核驳回邮件；相关操作均写入历史记录，邮件发送失败不回滚审核/删除操作。
 

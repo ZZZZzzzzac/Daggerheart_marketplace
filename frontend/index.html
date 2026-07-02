@@ -1483,6 +1483,7 @@
       error: null,
       tagModalOpen: false,
       likedEntries: [],
+      locallyTouchedLikes: new Set(),
     };
 
     const $ = (sel) => document.querySelector(sel);
@@ -1533,10 +1534,13 @@
     async function loadLikes() {
       try {
         const data = await apiFetch('/api/public/likes');
-        state.likedEntries = data.likedEntryIds || [];
+        const serverLikedEntries = data.likedEntryIds || [];
+        const untouchedServerLikes = serverLikedEntries.filter(id => !state.locallyTouchedLikes.has(id));
+        const touchedLocalLikes = state.likedEntries.filter(id => state.locallyTouchedLikes.has(id));
+        state.likedEntries = Array.from(new Set([...untouchedServerLikes, ...touchedLocalLikes]));
       } catch (err) {
         console.error('点赞记录加载失败:', err);
-        state.likedEntries = [];
+        state.likedEntries = state.likedEntries.filter(id => state.locallyTouchedLikes.has(id));
       }
     }
 
@@ -1551,6 +1555,7 @@
           throw new Error(errData.error || `API ${res.status}`);
         }
         const data = await res.json();
+        state.locallyTouchedLikes.add(entryId);
         if (data.liked) {
           if (!state.likedEntries.includes(entryId)) state.likedEntries.push(entryId);
         } else {
@@ -2044,10 +2049,15 @@
     async function init() {
       updateDisplayMode();
       await loadData();
-      await loadLikes();
       updateDisplayMode();
       renderAll();
       requestAnimationFrame(() => updateActiveNavSection());
+      loadLikes().then(() => {
+        if (!state.loading && !state.error && state.entries.length > 0) {
+          renderCardGrid();
+          requestAnimationFrame(() => updateActiveNavSection());
+        }
+      });
     }
 
     init();

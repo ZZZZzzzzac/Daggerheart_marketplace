@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { __test } from "../frontend/_worker.js";
+import worker, { __test } from "../frontend/_worker.js";
 
 test("normalizeEntry mirrors Flask entry cleanup", () => {
   const entry = __test.normalizeEntry({
@@ -84,6 +84,189 @@ test("buildTagCounts sorts by count then tag", () => {
     { tag: "西幻", count: 2 },
     { tag: "武侠", count: 1 },
   ]);
+});
+
+test("rowToEntry uses aggregated likeCount without exposing like identities by default", () => {
+  const entry = __test.rowToEntry({
+    id: "dhm_public",
+    title: "公开资源",
+    author: "作者",
+    content_tags: JSON.stringify(["模组"]),
+    flavor_tags: JSON.stringify(["西幻"]),
+    recommend_value: 2,
+    like_count: 7,
+    summary: "简介",
+    cover_path: "/the-great-vault/covers/demo.webp",
+    target_url: "https://example.com/public",
+    created_at: "2026-01-01T00:00:00+00:00",
+    updated_at: "2026-01-02T00:00:00+00:00",
+  });
+
+  assert.equal(entry.likeCount, 7);
+  assert.equal(Object.hasOwn(entry, "likedBy"), false);
+});
+
+test("publicEntryOnly strips private email and likedBy hashes", () => {
+  const entry = __test.publicEntryOnly({
+    id: "dhm_public",
+    title: "公开资源",
+    likeCount: 2,
+    likedBy: ["hash_a", "hash_b"],
+    feedbackEmail: "creator@example.com",
+  });
+
+  assert.equal(entry.likeCount, 2);
+  assert.equal(Object.hasOwn(entry, "likedBy"), false);
+  assert.equal(Object.hasOwn(entry, "feedbackEmail"), false);
+});
+
+test("public JSON responses can override no-store with cacheable catalog headers", () => {
+  const response = __test.json({ ok: true }, 200, {
+    "cache-control": "public, max-age=60, stale-while-revalidate=300",
+  });
+
+  assert.equal(response.headers.get("content-type"), "application/json; charset=utf-8");
+  assert.equal(response.headers.get("cache-control"), "public, max-age=60, stale-while-revalidate=300");
+});
+
+test("loadPublicEntries reads aggregated like counts and keeps zero-like entries", async () => {
+  let preparedSql = "";
+  const env = {
+    DB: {
+      prepare(sql) {
+        preparedSql = sql;
+        return {
+          async all() {
+            return {
+              results: [
+                {
+                  id: "dhm_liked",
+                  title: "有赞资源",
+                  author: "",
+                  content_tags: "[]",
+                  flavor_tags: "[]",
+                  recommend_value: 0,
+                  like_count: 3,
+                  summary: "",
+                  cover_path: "",
+                  target_url: "https://example.com/liked",
+                  created_at: "2026-01-01T00:00:00+00:00",
+                  updated_at: "2026-01-03T00:00:00+00:00",
+                },
+                {
+                  id: "dhm_zero",
+                  title: "零赞资源",
+                  author: "",
+                  content_tags: "[]",
+                  flavor_tags: "[]",
+                  recommend_value: 0,
+                  like_count: 0,
+                  summary: "",
+                  cover_path: "",
+                  target_url: "https://example.com/zero",
+                  created_at: "2026-01-01T00:00:00+00:00",
+                  updated_at: "2026-01-02T00:00:00+00:00",
+                },
+              ],
+            };
+          },
+        };
+      },
+    },
+  };
+
+  const entries = await __test.loadPublicEntries(env);
+
+  assert.match(preparedSql, /COUNT\(\*\) AS like_count/);
+  assert.deepEqual(entries.map((entry) => [entry.id, entry.likeCount]), [
+    ["dhm_liked", 3],
+    ["dhm_zero", 0],
+  ]);
+  assert.equal(entries.some((entry) => Object.hasOwn(entry, "likedBy")), false);
+});
+
+test("loadPublicEntries can include admin-private fields without like hash details", async () => {
+  const env = {
+    DB: {
+      prepare() {
+        return {
+          async all() {
+            return {
+              results: [
+                {
+                  id: "dhm_admin",
+                  title: "后台资源",
+                  author: "",
+                  content_tags: "[]",
+                  flavor_tags: "[]",
+                  recommend_value: 0,
+                  like_count: 5,
+                  summary: "",
+                  cover_path: "",
+                  target_url: "https://example.com/admin",
+                  feedback_email: "creator@example.com",
+                  created_at: "2026-01-01T00:00:00+00:00",
+                  updated_at: "2026-01-02T00:00:00+00:00",
+                },
+              ],
+            };
+          },
+        };
+      },
+    },
+  };
+
+  const entries = await __test.loadPublicEntries(env, { includePrivate: true });
+
+  assert.equal(entries[0].likeCount, 5);
+  assert.equal(entries[0].feedbackEmail, "creator@example.com");
+  assert.equal(Object.hasOwn(entries[0], "likedBy"), false);
+});
+
+test("public bootstrap route returns cacheable non-personalized entries", async () => {
+  const env = {
+    DB: {
+      prepare() {
+        return {
+          async all() {
+            return {
+              results: [
+                {
+                  id: "dhm_public",
+                  title: "公开资源",
+                  author: "",
+                  content_tags: JSON.stringify(["模组"]),
+                  flavor_tags: JSON.stringify(["西幻"]),
+                  recommend_value: 1,
+                  like_count: 4,
+                  summary: "",
+                  cover_path: "",
+                  target_url: "https://example.com/public",
+                  feedback_email: "creator@example.com",
+                  created_at: "2026-01-01T00:00:00+00:00",
+                  updated_at: "2026-01-02T00:00:00+00:00",
+                },
+              ],
+            };
+          },
+        };
+      },
+    },
+  };
+  const response = await worker.fetch(
+    new Request("https://dhvault.top/api/public/bootstrap"),
+    env,
+    { waitUntil() {} }
+  );
+  const data = await response.json();
+
+  assert.equal(response.status, 200);
+  assert.equal(response.headers.get("cache-control"), "public, max-age=60, stale-while-revalidate=300");
+  assert.equal(data.entries.length, 1);
+  assert.equal(data.entries[0].likeCount, 4);
+  assert.equal(Object.hasOwn(data.entries[0], "likedBy"), false);
+  assert.equal(Object.hasOwn(data.entries[0], "feedbackEmail"), false);
+  assert.deepEqual(data.tags.contentTags, [{ tag: "模组", count: 1 }]);
 });
 
 test("sendRejectionNotice posts a Resend email when configured", async () => {

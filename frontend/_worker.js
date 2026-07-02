@@ -6,6 +6,12 @@ const LIKE_HASH_LENGTH = 16;
 const ENTRY_ID_PREFIX = "dhm_";
 const SUBMISSION_ID_PREFIX = "sub_";
 const REVIEW_ID_PREFIX = "rev_";
+const PUBLIC_DIRECTORY_CACHE_CONTROL = "public, max-age=60, stale-while-revalidate=300";
+const PUBLIC_DIRECTORY_CACHE_PATHS = [
+  "/api/public/bootstrap",
+  "/api/public/entries",
+  "/api/public/tags",
+];
 const ALLOWED_IMAGE_EXTENSIONS = new Set([".png", ".jpg", ".jpeg", ".webp", ".gif", ".svg"]);
 const MAX_UPLOAD_BYTES = 8 * 1024 * 1024;
 const RESEND_EMAIL_ENDPOINT = "https://api.resend.com/emails";
@@ -32,12 +38,12 @@ export default {
   },
 };
 
-async function handleRequest(request, env) {
+async function handleRequest(request, env, ctx) {
   const url = new URL(request.url);
   const path = normalizePath(url.pathname);
 
   if (path.startsWith("/api/")) {
-    return handleApi(request, env, path);
+    return handleApi(request, env, ctx, path);
   }
 
   if (path === "/the-great-vault" || path === "/the-great-vault/") {
@@ -66,7 +72,7 @@ async function handleRequest(request, env) {
   return env.ASSETS.fetch(request);
 }
 
-async function handleApi(request, env, path) {
+async function handleApi(request, env, ctx, path) {
   const method = request.method.toUpperCase();
 
   if (method === "GET" && path === "/api/health") {
@@ -74,14 +80,18 @@ async function handleApi(request, env, path) {
   }
 
   if (method === "GET" && path === "/api/public/entries") {
-    return json({ entries: publicEntriesOnly(await loadEntries(env)) });
+    return cachedPublicJson(request, ctx, async () => ({
+      entries: publicEntriesOnly(await loadPublicEntries(env)),
+    }));
   }
   if (method === "GET" && path === "/api/public/tags") {
-    return json(await buildTagCountsFromDb(env));
+    return cachedPublicJson(request, ctx, async () => buildTagCountsFromDb(env));
   }
   if (method === "GET" && path === "/api/public/bootstrap") {
-    const entries = await loadEntries(env);
-    return json({ entries: publicEntriesOnly(entries), tags: buildTagCounts(entries) });
+    return cachedPublicJson(request, ctx, async () => {
+      const entries = await loadPublicEntries(env);
+      return { entries: publicEntriesOnly(entries), tags: buildTagCounts(entries) };
+    });
   }
   if (method === "GET" && path === "/api/public/likes") {
     const ipHash = await getClientIpHash(request, env);
@@ -93,7 +103,9 @@ async function handleApi(request, env, path) {
 
   const likeMatch = path.match(/^\/api\/public\/like\/([^/]+)$/);
   if (method === "POST" && likeMatch) {
-    return toggleLike(request, env, decodeURIComponent(likeMatch[1]));
+    const response = await toggleLike(request, env, decodeURIComponent(likeMatch[1]));
+    schedulePublicDirectoryCachePurge(ctx, request);
+    return response;
   }
 
   if (method === "POST" && path === "/api/public/submissions") {
@@ -125,11 +137,13 @@ async function handleApi(request, env, path) {
   }
   if (method === "POST" && path === "/api/admin/entries") {
     const entry = await createEntry(env, await readJson(request));
+    schedulePublicDirectoryCachePurge(ctx, request);
     return json({ entry }, 201);
   }
   if (method === "POST" && path === "/api/admin/entries/import") {
     const payload = await readJson(request);
     const imported = await importEntries(env, payload.entries);
+    schedulePublicDirectoryCachePurge(ctx, request);
     return json({ imported });
   }
   if (method === "POST" && path === "/api/admin/covers") {
@@ -157,10 +171,12 @@ async function handleApi(request, env, path) {
     const entryId = decodeURIComponent(entryMatch[1]);
     if (method === "PUT") {
       const entry = await updateEntry(env, entryId, await readJson(request));
+      schedulePublicDirectoryCachePurge(ctx, request);
       return json({ entry });
     }
     if (method === "DELETE") {
       await deleteEntry(env, entryId);
+      schedulePublicDirectoryCachePurge(ctx, request);
       return json({ deletedId: entryId });
     }
   }
@@ -180,7 +196,9 @@ async function handleApi(request, env, path) {
 
   const approveMatch = path.match(/^\/api\/admin\/submissions\/([^/]+)\/approve$/);
   if (method === "POST" && approveMatch) {
-    return approveSubmission(env, decodeURIComponent(approveMatch[1]));
+    const response = await approveSubmission(env, decodeURIComponent(approveMatch[1]));
+    schedulePublicDirectoryCachePurge(ctx, request);
+    return response;
   }
 
   return json({ error: "not found" }, 404);
@@ -204,7 +222,82 @@ async function serveR2Object(env, key) {
   return new Response(object.body, { headers });
 }
 
+async function cachedPublicJson(request, ctx, buildPayload) {
+  const cacheKey = publicDirectoryCacheKey(request);
+  const cache = getDefaultCache();
+  if (cache && cacheKey) {
+    const cached = await cache.match(cacheKey);
+    if (cached) return cached;
+  }
+
+  const response = json(await buildPayload(), 200, {
+    "cache-control": PUBLIC_DIRECTORY_CACHE_CONTROL,
+  });
+  if (cache && cacheKey) {
+    const put = cache.put(cacheKey, response.clone());
+    if (ctx && typeof ctx.waitUntil === "function") {
+      ctx.waitUntil(put);
+    } else {
+      await put;
+    }
+  }
+  return response;
+}
+
+function schedulePublicDirectoryCachePurge(ctx, request) {
+  const cache = getDefaultCache();
+  if (!cache) return;
+
+  const purge = purgePublicDirectoryCache(request);
+  if (ctx && typeof ctx.waitUntil === "function") {
+    ctx.waitUntil(purge);
+  } else {
+    void purge.catch((error) => console.error("public cache purge failed", error));
+  }
+}
+
+async function purgePublicDirectoryCache(request) {
+  const cache = getDefaultCache();
+  if (!cache) return;
+
+  const url = new URL(request.url);
+  await Promise.all(PUBLIC_DIRECTORY_CACHE_PATHS.map((path) => {
+    const cacheUrl = new URL(path, url.origin);
+    return cache.delete(new Request(cacheUrl.toString(), { method: "GET" }));
+  }));
+}
+
+function publicDirectoryCacheKey(request) {
+  const url = new URL(request.url);
+  return new Request(url.toString(), { method: "GET" });
+}
+
+function getDefaultCache() {
+  return typeof caches !== "undefined" && caches.default ? caches.default : null;
+}
+
+async function loadPublicEntries(env, options = {}) {
+  const entriesResult = await env.DB.prepare(
+    `SELECT e.id, e.title, e.author, e.content_tags, e.flavor_tags,
+            e.recommend_value, e.summary, e.cover_path, e.target_url,
+            e.feedback_email, e.created_at, e.updated_at,
+            COALESCE(l.like_count, 0) AS like_count
+       FROM entries e
+       LEFT JOIN (
+         SELECT entry_id, COUNT(*) AS like_count
+           FROM entry_likes
+          GROUP BY entry_id
+       ) l ON l.entry_id = e.id
+      ORDER BY e.updated_at DESC, e.id ASC`
+  ).all();
+  return entriesResult.results.map((row) => rowToEntry(row, [], options));
+}
+
 async function loadEntries(env, options = {}) {
+  if (!options.includeLikeDetails) {
+    return loadPublicEntries(env, options);
+  }
+
   const entriesResult = await env.DB.prepare(
     `SELECT id, title, author, content_tags, flavor_tags, recommend_value,
             summary, cover_path, target_url, feedback_email, created_at, updated_at
@@ -220,7 +313,7 @@ async function loadEntries(env, options = {}) {
     likesByEntry.get(like.entry_id).push(like.ip_hash);
   }
   return entriesResult.results.map((row) => (
-    rowToEntry(row, likesByEntry.get(row.id) || [], options)
+    rowToEntry(row, likesByEntry.get(row.id) || [], { ...options, includeLikeDetails: true })
   ));
 }
 
@@ -234,10 +327,13 @@ async function loadEntry(env, entryId, options = {}) {
   const likes = await env.DB.prepare(
     "SELECT ip_hash FROM entry_likes WHERE entry_id = ? ORDER BY ip_hash"
   ).bind(entryId).all();
-  return rowToEntry(row, likes.results.map((item) => item.ip_hash), options);
+  return rowToEntry(row, likes.results.map((item) => item.ip_hash), { ...options, includeLikeDetails: true });
 }
 
-function rowToEntry(row, likedBy, options = {}) {
+function rowToEntry(row, likedBy = [], options = {}) {
+  const likeCount = row.like_count !== undefined
+    ? Number(row.like_count || 0)
+    : likedBy.length;
   const entry = {
     id: row.id,
     title: row.title,
@@ -245,14 +341,16 @@ function rowToEntry(row, likedBy, options = {}) {
     contentTags: parseJsonArray(row.content_tags),
     flavorTags: parseJsonArray(row.flavor_tags),
     recommendValue: Number(row.recommend_value || 0),
-    likeCount: likedBy.length,
-    likedBy,
+    likeCount,
     summary: row.summary || "",
     coverPath: row.cover_path || "",
     targetUrl: row.target_url,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
+  if (options.includeLikeDetails) {
+    entry.likedBy = likedBy;
+  }
   if (options.includePrivate) {
     entry.feedbackEmail = row.feedback_email || "";
   }
@@ -262,6 +360,7 @@ function rowToEntry(row, likedBy, options = {}) {
 function publicEntryOnly(entry) {
   const cleaned = { ...entry };
   delete cleaned.feedbackEmail;
+  delete cleaned.likedBy;
   return cleaned;
 }
 
@@ -448,7 +547,7 @@ async function ensureEntryExists(env, entryId) {
 }
 
 async function buildTagCountsFromDb(env) {
-  return buildTagCounts(await loadEntries(env));
+  return buildTagCounts(await loadPublicEntries(env));
 }
 
 function buildTagCounts(entries) {
@@ -1321,13 +1420,17 @@ function nowIso() {
   return new Date().toISOString().replace(/\.\d{3}Z$/, "+00:00");
 }
 
-function json(payload, status = 200) {
+function json(payload, status = 200, headers = {}) {
+  const responseHeaders = new Headers({
+    "content-type": "application/json; charset=utf-8",
+    "cache-control": "no-store",
+  });
+  for (const [key, value] of Object.entries(headers)) {
+    responseHeaders.set(key, value);
+  }
   return new Response(JSON.stringify(payload), {
     status,
-    headers: {
-      "content-type": "application/json; charset=utf-8",
-      "cache-control": "no-store",
-    },
+    headers: responseHeaders,
   });
 }
 
@@ -1353,8 +1456,12 @@ export const __test = {
   buildRejectionHtml,
   buildRejectionText,
   buildTagCounts,
+  json,
+  loadPublicEntries,
   normalizeEntry,
   normalizeSubmission,
   parseJsonArray,
+  publicEntryOnly,
+  rowToEntry,
   sendRejectionNotice,
 };
