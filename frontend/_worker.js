@@ -74,14 +74,14 @@ async function handleApi(request, env, path) {
   }
 
   if (method === "GET" && path === "/api/public/entries") {
-    return json({ entries: await loadEntries(env) });
+    return json({ entries: publicEntriesOnly(await loadEntries(env)) });
   }
   if (method === "GET" && path === "/api/public/tags") {
     return json(await buildTagCountsFromDb(env));
   }
   if (method === "GET" && path === "/api/public/bootstrap") {
     const entries = await loadEntries(env);
-    return json({ entries, tags: buildTagCounts(entries) });
+    return json({ entries: publicEntriesOnly(entries), tags: buildTagCounts(entries) });
   }
   if (method === "GET" && path === "/api/public/likes") {
     const ipHash = await getClientIpHash(request, env);
@@ -121,7 +121,7 @@ async function handleApi(request, env, path) {
     return logout(request);
   }
   if (method === "GET" && path === "/api/admin/entries") {
-    return json({ entries: await loadEntries(env) });
+    return json({ entries: await loadEntries(env, { includePrivate: true }) });
   }
   if (method === "POST" && path === "/api/admin/entries") {
     const entry = await createEntry(env, await readJson(request));
@@ -140,6 +140,16 @@ async function handleApi(request, env, path) {
   }
   if (method === "GET" && path === "/api/admin/submission-reviews") {
     return json({ reviews: await loadSubmissionReviews(env) });
+  }
+
+  const entryRejectMatch = path.match(/^\/api\/admin\/entries\/([^/]+)\/reject$/);
+  if (method === "POST" && entryRejectMatch) {
+    const payload = await readJson(request, true);
+    return rejectPublishedEntry(
+      env,
+      decodeURIComponent(entryRejectMatch[1]),
+      normalizeReviewNote(payload.reviewNote)
+    );
   }
 
   const entryMatch = path.match(/^\/api\/admin\/entries\/([^/]+)$/);
@@ -194,10 +204,10 @@ async function serveR2Object(env, key) {
   return new Response(object.body, { headers });
 }
 
-async function loadEntries(env) {
+async function loadEntries(env, options = {}) {
   const entriesResult = await env.DB.prepare(
     `SELECT id, title, author, content_tags, flavor_tags, recommend_value,
-            summary, cover_path, target_url, created_at, updated_at
+            summary, cover_path, target_url, feedback_email, created_at, updated_at
        FROM entries
       ORDER BY updated_at DESC, id ASC`
   ).all();
@@ -209,24 +219,26 @@ async function loadEntries(env) {
     if (!likesByEntry.has(like.entry_id)) likesByEntry.set(like.entry_id, []);
     likesByEntry.get(like.entry_id).push(like.ip_hash);
   }
-  return entriesResult.results.map((row) => rowToEntry(row, likesByEntry.get(row.id) || []));
+  return entriesResult.results.map((row) => (
+    rowToEntry(row, likesByEntry.get(row.id) || [], options)
+  ));
 }
 
-async function loadEntry(env, entryId) {
+async function loadEntry(env, entryId, options = {}) {
   const row = await env.DB.prepare(
     `SELECT id, title, author, content_tags, flavor_tags, recommend_value,
-            summary, cover_path, target_url, created_at, updated_at
+            summary, cover_path, target_url, feedback_email, created_at, updated_at
        FROM entries WHERE id = ?`
   ).bind(entryId).first();
   if (!row) throw new ValidationError("entry not found");
   const likes = await env.DB.prepare(
     "SELECT ip_hash FROM entry_likes WHERE entry_id = ? ORDER BY ip_hash"
   ).bind(entryId).all();
-  return rowToEntry(row, likes.results.map((item) => item.ip_hash));
+  return rowToEntry(row, likes.results.map((item) => item.ip_hash), options);
 }
 
-function rowToEntry(row, likedBy) {
-  return {
+function rowToEntry(row, likedBy, options = {}) {
+  const entry = {
     id: row.id,
     title: row.title,
     author: row.author || "",
@@ -241,23 +253,38 @@ function rowToEntry(row, likedBy) {
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
+  if (options.includePrivate) {
+    entry.feedbackEmail = row.feedback_email || "";
+  }
+  return entry;
+}
+
+function publicEntryOnly(entry) {
+  const cleaned = { ...entry };
+  delete cleaned.feedbackEmail;
+  return cleaned;
+}
+
+function publicEntriesOnly(entries) {
+  return entries.map(publicEntryOnly);
 }
 
 async function createEntry(env, payload) {
   const existingIds = await getIds(env, "entries");
   const entry = normalizeEntry(payload, { existingIds });
   await insertEntry(env, entry);
+  await insertHistoryRecord(env, await buildHistoryRecord(env, { source: entry, action: "entry_created" }));
   return entry;
 }
 
 async function updateEntry(env, entryId, payload) {
-  const current = await loadEntry(env, entryId);
+  const current = await loadEntry(env, entryId, { includePrivate: true });
   const existingIds = await getIds(env, "entries", entryId);
   const entry = normalizeEntry(payload, { existingIds, currentEntry: current });
   await env.DB.prepare(
     `UPDATE entries
         SET title = ?, author = ?, content_tags = ?, flavor_tags = ?,
-            recommend_value = ?, summary = ?, cover_path = ?, target_url = ?,
+            recommend_value = ?, summary = ?, cover_path = ?, target_url = ?, feedback_email = ?,
             created_at = ?, updated_at = ?
       WHERE id = ?`
   ).bind(
@@ -269,28 +296,49 @@ async function updateEntry(env, entryId, payload) {
     entry.summary,
     entry.coverPath,
     entry.targetUrl,
+    entry.feedbackEmail,
     entry.createdAt,
     entry.updatedAt,
     entry.id
   ).run();
+  await insertHistoryRecord(env, await buildHistoryRecord(env, { source: entry, action: "entry_updated" }));
   return entry;
 }
 
 async function deleteEntry(env, entryId) {
-  const entry = await loadEntry(env, entryId);
+  const entry = await loadEntry(env, entryId, { includePrivate: true });
   await env.DB.batch([
     env.DB.prepare("DELETE FROM entry_likes WHERE entry_id = ?").bind(entryId),
     env.DB.prepare("DELETE FROM entries WHERE id = ?").bind(entryId),
+    reviewInsertStatement(env, await buildHistoryRecord(env, { source: entry, action: "entry_deleted" })),
   ]);
   await deleteCoverObject(env, entry.coverPath, "public");
+}
+
+async function rejectPublishedEntry(env, entryId, reviewNote) {
+  const entry = await loadEntry(env, entryId, { includePrivate: true });
+  const notification = await sendPublishedRejectionNotice(env, entry, reviewNote);
+  const review = await buildHistoryRecord(env, {
+    source: entry,
+    action: "entry_rejected",
+    reviewNote,
+    notification,
+  });
+  await env.DB.batch([
+    env.DB.prepare("DELETE FROM entry_likes WHERE entry_id = ?").bind(entryId),
+    env.DB.prepare("DELETE FROM entries WHERE id = ?").bind(entryId),
+    reviewInsertStatement(env, review),
+  ]);
+  await deleteCoverObject(env, entry.coverPath, "public");
+  return json({ rejectedId: entryId, notification });
 }
 
 async function insertEntry(env, entry) {
   await env.DB.prepare(
     `INSERT INTO entries
       (id, title, author, content_tags, flavor_tags, recommend_value,
-       summary, cover_path, target_url, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+       summary, cover_path, target_url, feedback_email, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
   ).bind(
     entry.id,
     entry.title,
@@ -301,6 +349,7 @@ async function insertEntry(env, entry) {
     entry.summary,
     entry.coverPath,
     entry.targetUrl,
+    entry.feedbackEmail,
     entry.createdAt,
     entry.updatedAt
   ).run();
@@ -326,8 +375,8 @@ async function importEntries(env, incoming) {
       env.DB.prepare(
         `INSERT INTO entries
           (id, title, author, content_tags, flavor_tags, recommend_value,
-           summary, cover_path, target_url, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+           summary, cover_path, target_url, feedback_email, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
       ).bind(
         entry.id,
         entry.title,
@@ -338,6 +387,7 @@ async function importEntries(env, incoming) {
         entry.summary,
         entry.coverPath,
         entry.targetUrl,
+        entry.feedbackEmail,
         entry.createdAt,
         entry.updatedAt
       )
@@ -353,6 +403,15 @@ async function importEntries(env, incoming) {
     }
     existingIds.add(entry.id);
   }
+  statements.push(
+    reviewInsertStatement(
+      env,
+      await buildHistoryRecord(env, {
+        source: { title: "批量导入", summary: `导入 ${incoming.length} 个条目` },
+        action: "entries_imported",
+      })
+    )
+  );
   if (statements.length) await env.DB.batch(statements);
   return incoming.length;
 }
@@ -415,6 +474,10 @@ async function createSubmission(env, payload) {
   const existingIds = await getIds(env, "submissions");
   const submission = normalizeSubmission(payload, { existingIds });
   await insertSubmission(env, submission);
+  await insertHistoryRecord(
+    env,
+    await buildHistoryRecord(env, { source: submission, action: "submission_created" })
+  );
   return submission;
 }
 
@@ -442,6 +505,10 @@ async function updateSubmission(env, submissionId, payload) {
     submission.updatedAt,
     submission.id
   ).run();
+  await insertHistoryRecord(
+    env,
+    await buildHistoryRecord(env, { source: submission, action: "submission_updated" })
+  );
   return submission;
 }
 
@@ -521,22 +588,25 @@ async function approveSubmission(env, submissionId) {
     summary: submission.summary,
     coverPath: newCoverPath,
     targetUrl: submission.targetUrl,
+    feedbackEmail: submission.feedbackEmail,
     createdAt: now,
     updatedAt: now,
   };
-  const review = await buildSubmissionReview(env, {
-    submission,
+  const notification = await sendApprovalNotice(env, submission);
+  const review = await buildHistoryRecord(env, {
+    source: submission,
     action: "approved",
     entry,
     coverPath: newCoverPath,
+    notification,
   });
   await env.DB.batch([
     env.DB.prepare("DELETE FROM submissions WHERE id = ?").bind(submissionId),
     env.DB.prepare(
       `INSERT INTO entries
         (id, title, author, content_tags, flavor_tags, recommend_value,
-         summary, cover_path, target_url, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+         summary, cover_path, target_url, feedback_email, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     ).bind(
       entry.id,
       entry.title,
@@ -547,20 +617,21 @@ async function approveSubmission(env, submissionId) {
       entry.summary,
       entry.coverPath,
       entry.targetUrl,
+      submission.feedbackEmail,
       entry.createdAt,
       entry.updatedAt
     ),
     reviewInsertStatement(env, review),
   ]);
-  return json({ entry });
+  return json({ entry: publicEntryOnly(entry), notification });
 }
 
 async function rejectSubmission(env, submissionId, reviewNote) {
   const submission = await loadSubmission(env, submissionId);
   await deleteCoverObject(env, submission.coverPath, "pending");
   const notification = await sendRejectionNotice(env, submission, reviewNote);
-  const review = await buildSubmissionReview(env, {
-    submission,
+  const review = await buildHistoryRecord(env, {
+    source: submission,
     action: "rejected",
     reviewNote,
     notification,
@@ -573,9 +644,34 @@ async function rejectSubmission(env, submissionId, reviewNote) {
 }
 
 async function sendRejectionNotice(env, submission, reviewNote, fetchImpl = fetch) {
-  const recipient = normalizeOptionalText(submission.feedbackEmail);
+  return sendNotice(env, submission, {
+    noticeType: "submission_rejected",
+    reviewNote,
+    fetchImpl,
+  });
+}
+
+async function sendApprovalNotice(env, submission, fetchImpl = fetch) {
+  return sendNotice(env, submission, {
+    noticeType: "submission_approved",
+    reviewNote: "",
+    fetchImpl,
+  });
+}
+
+async function sendPublishedRejectionNotice(env, entry, reviewNote, fetchImpl = fetch) {
+  return sendNotice(env, entry, {
+    noticeType: "published_rejected",
+    reviewNote,
+    fetchImpl,
+  });
+}
+
+async function sendNotice(env, resource, options) {
+  const recipient = normalizeOptionalText(resource.feedbackEmail);
   if (!recipient) return { status: "skipped", reason: "no_feedback_email" };
   if (!env.RESEND_API_KEY) return { status: "skipped", reason: "not_configured" };
+  const fetchImpl = options.fetchImpl || fetch;
 
   try {
     const response = await fetchImpl(RESEND_EMAIL_ENDPOINT, {
@@ -584,7 +680,11 @@ async function sendRejectionNotice(env, submission, reviewNote, fetchImpl = fetc
         Authorization: `Bearer ${env.RESEND_API_KEY}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify(buildRejectionEmailPayload(env, submission, reviewNote, recipient)),
+      body: JSON.stringify(buildNoticeEmailPayload(env, resource, {
+        noticeType: options.noticeType,
+        reviewNote: options.reviewNote,
+        recipient,
+      })),
     });
 
     if (!response.ok) {
@@ -610,48 +710,85 @@ async function sendRejectionNotice(env, submission, reviewNote, fetchImpl = fetc
 }
 
 function buildRejectionEmailPayload(env, submission, reviewNote, recipient) {
+  return buildNoticeEmailPayload(env, submission, {
+    noticeType: "submission_rejected",
+    reviewNote,
+    recipient,
+  });
+}
+
+function buildNoticeEmailPayload(env, resource, options) {
   const replyTo = normalizeOptionalText(env.RESEND_REPLY_TO);
+  const content = buildNoticeContent(resource, options.reviewNote, options.noticeType);
   const payload = {
     from: normalizeOptionalText(env.RESEND_FROM) || DEFAULT_RESEND_FROM,
-    to: recipient,
-    subject: `你的投稿「${submission.title || "未命名投稿"}」未通过审核`,
-    text: buildRejectionText(submission, reviewNote),
-    html: buildRejectionHtml(submission, reviewNote),
+    to: options.recipient,
+    subject: content.subject,
+    text: content.text,
+    html: content.html,
   };
   if (replyTo) payload.reply_to = replyTo;
   return payload;
 }
 
 function buildRejectionText(submission, reviewNote) {
-  const note = normalizeOptionalText(reviewNote) || "未填写具体审阅意见。";
-  const title = submission.title || "未命名投稿";
-  const targetUrl = normalizeOptionalText(submission.targetUrl);
-  return [
-    `你好，你在宏伟宝库提交的资源「${title}」未通过审核。`,
-    "",
-    "审阅意见：",
-    note,
-    "",
-    targetUrl ? `投稿链接：${targetUrl}` : "",
-    "你可以根据审阅意见调整后重新投稿。",
-  ].filter((line) => line !== "").join("\n");
+  return buildNoticeContent(submission, reviewNote, "submission_rejected").text;
 }
 
 function buildRejectionHtml(submission, reviewNote) {
+  return buildNoticeContent(submission, reviewNote, "submission_rejected").html;
+}
+
+function buildNoticeContent(resource, reviewNote, noticeType) {
   const note = normalizeOptionalText(reviewNote) || "未填写具体审阅意见。";
-  const title = submission.title || "未命名投稿";
-  const targetUrl = normalizeOptionalText(submission.targetUrl);
-  const linkHtml = targetUrl
-    ? `<p>投稿链接：<a href="${escapeHtml(targetUrl)}">${escapeHtml(targetUrl)}</a></p>`
-    : "";
-  return [
-    "<p>你好，</p>",
-    `<p>你在宏伟宝库提交的资源「${escapeHtml(title)}」未通过审核。</p>`,
-    "<p>审阅意见：</p>",
-    `<blockquote>${escapeHtml(note).replace(/\n/g, "<br>")}</blockquote>`,
-    linkHtml,
-    "<p>你可以根据审阅意见调整后重新投稿。</p>",
-  ].join("");
+  const title = resource.title || "未命名资源";
+  if (noticeType === "submission_approved") {
+    return noticeContent(
+      `宏伟宝库投稿已收录：${title}`,
+      [
+        `你好，感谢你向匕首之心-宏伟宝库提交「${title}」。`,
+        "",
+        "你的投稿已经成功收录，现在可以在宏伟宝库中看到了。",
+        "",
+        "感谢你的分享，期待以后继续看到你的作品。",
+      ]
+    );
+  }
+  if (noticeType === "published_rejected") {
+    return noticeContent(
+      `宏伟宝库投稿需要调整：${title}`,
+      [
+        `你好，感谢你向匕首之心-宏伟宝库提交「${title}」。`,
+        "",
+        "经复核，您提交的资源在继续收录前还需要做一些调整，因此我们会先将它从宏伟宝库下架：",
+        "",
+        note,
+        "",
+        "你可以根据意见修改后重新提交，期待再次看到你的作品。",
+      ]
+    );
+  }
+  return noticeContent(
+    `宏伟宝库投稿需要调整：${title}`,
+    [
+      `你好，感谢你向匕首之心-宏伟宝库提交「${title}」。`,
+      "",
+      "不过在收录之前，我们希望你做一些调整：",
+      "",
+      note,
+      "",
+      "你可以根据意见修改后重新提交，期待再次看到你的作品。",
+    ]
+  );
+}
+
+function noticeContent(subject, lines) {
+  const text = lines.join("\n");
+  const html = lines.map((line) => {
+    if (!line) return "";
+    return `<p>${escapeHtml(line).replace(/\n/g, "<br>")}</p>`;
+  }).join("");
+  return { subject, text, html };
 }
 
 async function readOptionalJson(response) {
@@ -692,27 +829,34 @@ function escapeHtml(value) {
     .replace(/'/g, "&#39;");
 }
 
-async function buildSubmissionReview(env, options) {
+async function buildHistoryRecord(env, options) {
   const existingIds = await getIds(env, "submission_reviews");
-  const submission = options.submission;
+  const source = options.source || {};
+  const action = options.action;
+  const isSubmissionAction = action === "approved" || action === "rejected" || action.startsWith("submission_");
+  const isEntryAction = action.startsWith("entry_");
   return {
     id: generateId(REVIEW_ID_PREFIX, existingIds),
-    submissionId: submission.id || "",
-    action: options.action,
-    entryId: options.entry ? options.entry.id : "",
-    title: submission.title || "",
-    author: submission.author || "",
-    contentTags: [...(submission.contentTags || [])],
-    flavorTags: [...(submission.flavorTags || [])],
-    summary: submission.summary || "",
-    coverPath: options.coverPath !== undefined ? options.coverPath : submission.coverPath || "",
-    targetUrl: submission.targetUrl || "",
-    feedbackEmail: submission.feedbackEmail || "",
+    submissionId: isSubmissionAction ? source.id || "" : "",
+    action,
+    entryId: options.entry ? options.entry.id : isEntryAction ? source.id || "" : "",
+    title: source.title || "",
+    author: source.author || "",
+    contentTags: [...(source.contentTags || [])],
+    flavorTags: [...(source.flavorTags || [])],
+    summary: source.summary || "",
+    coverPath: options.coverPath !== undefined ? options.coverPath : source.coverPath || "",
+    targetUrl: source.targetUrl || "",
+    feedbackEmail: source.feedbackEmail || "",
     reviewNote: options.reviewNote || "",
     notification: options.notification || null,
-    submittedAt: submission.createdAt || "",
+    submittedAt: source.createdAt || "",
     reviewedAt: nowIso(),
   };
+}
+
+async function insertHistoryRecord(env, review) {
+  await reviewInsertStatement(env, review).run();
 }
 
 function reviewInsertStatement(env, review) {
@@ -832,6 +976,9 @@ function normalizeEntry(payload, options) {
   const summary = normalizeOptionalText(payload.summary);
   const targetUrl = normalizeExternalUrl(payload.targetUrl);
   const coverPath = normalizeCoverPath(payload.coverPath, COVER_URL_PREFIX);
+  const feedbackEmail = current
+    ? normalizeOptionalText(current.feedbackEmail)
+    : normalizeOptionalFeedbackEmail(payload.feedbackEmail);
   const now = nowIso();
 
   let id;
@@ -858,6 +1005,7 @@ function normalizeEntry(payload, options) {
     summary,
     coverPath,
     targetUrl,
+    feedbackEmail,
     createdAt,
     updatedAt: now,
   };
@@ -959,6 +1107,15 @@ function normalizeExternalUrl(value) {
 }
 
 function normalizeFeedbackEmail(value) {
+  const email = normalizeOptionalText(value).toLowerCase();
+  if (!email) throw new ValidationError("feedbackEmail is required");
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+    throw new ValidationError("feedbackEmail must be a valid email address");
+  }
+  return email;
+}
+
+function normalizeOptionalFeedbackEmail(value) {
   const email = normalizeOptionalText(value).toLowerCase();
   if (!email) return "";
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {

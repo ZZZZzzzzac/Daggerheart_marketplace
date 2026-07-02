@@ -88,9 +88,20 @@ test("sendRejectionNotice posts a Resend email when configured", async () => {
   assert.equal(body.from, "宏伟宝库 <review@mail.dhvault.top>");
   assert.equal(body.to, "creator@example.com");
   assert.equal(body.reply_to, "contact@dhvault.top");
-  assert.equal(body.subject, "你的投稿「社区投稿」未通过审核");
+  assert.equal(body.subject, "宏伟宝库投稿需要调整：社区投稿");
+  assert.match(body.text, /你好，感谢你向匕首之心-宏伟宝库提交「社区投稿」。/);
   assert.match(body.text, /请补充授权说明。/);
   assert.match(body.html, /请补充授权说明。/);
+});
+
+test("normalizeSubmission requires feedback email", () => {
+  assert.throws(
+    () => __test.normalizeSubmission({
+      title: "缺邮箱投稿",
+      targetUrl: "https://example.com/no-email",
+    }, { existingIds: new Set() }),
+    /feedbackEmail is required/
+  );
 });
 
 test("sendRejectionNotice skips Resend when email or API key is missing", async () => {

@@ -244,6 +244,40 @@ class MarketplaceServerTestCase(unittest.TestCase):
         entry_ids = [e["id"] for e in bootstrap.get_json()["entries"]]
         self.assertNotIn(entry_id, entry_ids)
 
+    def test_reject_published_entry_without_feedback_email(self) -> None:
+        self.login()
+        create_response = self.client.post(
+            "/api/admin/entries",
+            json={
+                "title": "旧资源",
+                "author": "测试",
+                "contentTags": [],
+                "flavorTags": [],
+                "recommendValue": 0,
+                "summary": "",
+                "coverPath": "",
+                "targetUrl": "https://example.com/legacy",
+            },
+        )
+        entry_id = create_response.get_json()["entry"]["id"]
+
+        reject_response = self.client.post(
+            f"/api/admin/entries/{entry_id}/reject",
+            json={"reviewNote": "需要重新整理授权说明。"},
+        )
+
+        self.assertEqual(reject_response.status_code, 200)
+        self.assertEqual(
+            reject_response.get_json()["notification"],
+            {"status": "skipped", "reason": "no_feedback_email"},
+        )
+        entries_after = self.client.get("/api/admin/entries").get_json()["entries"]
+        self.assertFalse(any(e["id"] == entry_id for e in entries_after))
+        reviews = self.client.get("/api/admin/submission-reviews").get_json()["reviews"]
+        rejected = next(r for r in reviews if r["action"] == "entry_rejected")
+        self.assertEqual(rejected["entryId"], entry_id)
+        self.assertEqual(rejected["reviewNote"], "需要重新整理授权说明。")
+
     def test_submit_entry_success(self) -> None:
         """匿名提交合法条目 → 201，数据写入 submissions，不进入 entries。"""
         payload = {
@@ -312,6 +346,7 @@ class MarketplaceServerTestCase(unittest.TestCase):
             json={
                 "title": "待审条目",
                 "targetUrl": "https://example.com/test",
+                "feedbackEmail": "submitter@example.com",
             },
         )
         self.login()
@@ -344,6 +379,7 @@ class MarketplaceServerTestCase(unittest.TestCase):
             json={
                 "title": "投稿A",
                 "targetUrl": "https://example.com/a",
+                "feedbackEmail": "a@example.com",
             },
         )
         self.client.post(
@@ -351,6 +387,7 @@ class MarketplaceServerTestCase(unittest.TestCase):
             json={
                 "title": "投稿B",
                 "targetUrl": "https://example.com/b",
+                "feedbackEmail": "b@example.com",
             },
         )
 
@@ -371,6 +408,7 @@ class MarketplaceServerTestCase(unittest.TestCase):
             json={
                 "title": "原始标题",
                 "targetUrl": "https://example.com/original",
+                "feedbackEmail": "original@example.com",
             },
         )
         self.login()
@@ -445,7 +483,7 @@ class MarketplaceServerTestCase(unittest.TestCase):
         self.assertEqual(approved["likeCount"], 0)
         self.assertEqual(approved["likedBy"], [])
         self.assertTrue(approved["id"].startswith("dhm_"))
-        self.assertNotIn("feedbackEmail", approved)
+        self.assertEqual(approved["feedbackEmail"], "submitter@example.com")
 
         bootstrap_entries = self.client.get("/api/public/bootstrap").get_json()["entries"]
         public_entry = next(e for e in bootstrap_entries if e["title"] == "待通过条目")
@@ -463,12 +501,12 @@ class MarketplaceServerTestCase(unittest.TestCase):
         history_resp = self.client.get("/api/admin/submission-reviews")
         self.assertEqual(history_resp.status_code, 200)
         reviews = history_resp.get_json()["reviews"]
-        self.assertEqual(len(reviews), 1)
-        self.assertEqual(reviews[0]["action"], "approved")
-        self.assertEqual(reviews[0]["submissionId"], sid)
-        self.assertEqual(reviews[0]["entryId"], approved["id"])
-        self.assertEqual(reviews[0]["title"], "待通过条目")
-        self.assertNotIn("/pending/", reviews[0]["coverPath"])
+        approved_review = next(r for r in reviews if r["action"] == "approved")
+        self.assertEqual(approved_review["submissionId"], sid)
+        self.assertEqual(approved_review["entryId"], approved["id"])
+        self.assertEqual(approved_review["title"], "待通过条目")
+        self.assertEqual(approved_review["notification"]["reason"], "not_configured")
+        self.assertNotIn("/pending/", approved_review["coverPath"])
 
     def test_reject_submission(self) -> None:
         """驳回投稿：submissions 移除、pending 封面清理。"""
@@ -489,6 +527,7 @@ class MarketplaceServerTestCase(unittest.TestCase):
                 "title": "待驳回条目",
                 "targetUrl": "https://example.com/reject-me",
                 "coverPath": pending_cover_path,
+                "feedbackEmail": "reject@example.com",
             },
         )
         submissions = self.client.get("/api/admin/submissions").get_json()["submissions"]
@@ -499,7 +538,7 @@ class MarketplaceServerTestCase(unittest.TestCase):
         self.assertEqual(reject_resp.status_code, 200)
         self.assertEqual(
             reject_resp.get_json()["notification"],
-            {"status": "skipped", "reason": "no_feedback_email"},
+            {"status": "skipped", "reason": "not_configured"},
         )
 
         # submissions 应为空
@@ -518,13 +557,12 @@ class MarketplaceServerTestCase(unittest.TestCase):
         history_resp = self.client.get("/api/admin/submission-reviews")
         self.assertEqual(history_resp.status_code, 200)
         reviews = history_resp.get_json()["reviews"]
-        self.assertEqual(len(reviews), 1)
-        self.assertEqual(reviews[0]["action"], "rejected")
-        self.assertEqual(reviews[0]["submissionId"], sid)
-        self.assertEqual(reviews[0]["title"], "待驳回条目")
+        rejected_review = next(r for r in reviews if r["action"] == "rejected")
+        self.assertEqual(rejected_review["submissionId"], sid)
+        self.assertEqual(rejected_review["title"], "待驳回条目")
         self.assertEqual(
-            reviews[0]["notification"],
-            {"status": "skipped", "reason": "no_feedback_email"},
+            rejected_review["notification"],
+            {"status": "skipped", "reason": "not_configured"},
         )
 
     def test_reject_submission_sends_feedback_email_when_configured(self) -> None:
@@ -694,6 +732,7 @@ class MarketplaceServerTestCase(unittest.TestCase):
             json={
                 "title": "公开可见条目",
                 "targetUrl": "https://example.com/public-visible",
+                "feedbackEmail": "visible@example.com",
             },
         )
         submissions = self.client.get("/api/admin/submissions").get_json()["submissions"]

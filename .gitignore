@@ -19,5 +19,6 @@ data/runtime/secrets/*
 !data/runtime/secrets/.gitkeep
 data/imports/
 !data/imports/.gitkeep
+data/backups/
 迁移计划.md
 covers.rar

@@ -56,6 +56,43 @@ def send_rejection_notice(
     recipient: str,
     title: str,
     review_note: str,
+    notice_type: str = "submission_rejected",
+) -> dict[str, str]:
+    return send_notice(
+        app_config=app_config,
+        secret_dir=secret_dir,
+        recipient=recipient,
+        title=title,
+        review_note=review_note,
+        notice_type=notice_type,
+    )
+
+
+def send_approval_notice(
+    *,
+    app_config: dict[str, Any],
+    secret_dir: Path,
+    recipient: str,
+    title: str,
+) -> dict[str, str]:
+    return send_notice(
+        app_config=app_config,
+        secret_dir=secret_dir,
+        recipient=recipient,
+        title=title,
+        review_note="",
+        notice_type="submission_approved",
+    )
+
+
+def send_notice(
+    *,
+    app_config: dict[str, Any],
+    secret_dir: Path,
+    recipient: str,
+    title: str,
+    review_note: str,
+    notice_type: str,
 ) -> dict[str, str]:
     if not recipient:
         return {"status": "skipped", "reason": "no_feedback_email"}
@@ -64,7 +101,10 @@ def send_rejection_notice(
         smtp_config = load_smtp_config(app_config, secret_dir)
         if smtp_config is None:
             return {"status": "skipped", "reason": "not_configured"}
-        send_email(smtp_config, build_rejection_message(smtp_config, recipient, title, review_note))
+        send_email(
+            smtp_config,
+            build_notice_message(smtp_config, recipient, title, review_note, notice_type),
+        )
         return {"status": "sent"}
     except Exception as exc:  # noqa: BLE001 - 邮件失败不能阻塞驳回
         return {
@@ -156,24 +196,79 @@ def build_rejection_message(
     title: str,
     review_note: str,
 ) -> EmailMessage:
-    note = review_note or "管理员未填写具体审阅意见。"
+    return build_notice_message(
+        smtp_config,
+        recipient,
+        title,
+        review_note,
+        "submission_rejected",
+    )
+
+
+def build_notice_message(
+    smtp_config: SmtpConfig,
+    recipient: str,
+    title: str,
+    review_note: str,
+    notice_type: str,
+) -> EmailMessage:
+    subject, body = build_notice_content(title, review_note, notice_type)
     message = EmailMessage()
-    message["Subject"] = f"宏伟宝库投稿未通过：{title}"
+    message["Subject"] = subject
     message["From"] = formataddr((smtp_config.from_name, smtp_config.from_email))
     message["To"] = recipient
-    message.set_content(
+    message.set_content(body)
+    return message
+
+
+def build_notice_content(title: str, review_note: str, notice_type: str) -> tuple[str, str]:
+    safe_title = title or "未命名资源"
+    note = review_note or "未填写具体审阅意见。"
+
+    if notice_type == "submission_approved":
+        return (
+            f"宏伟宝库投稿已收录：{safe_title}",
+            "\n".join(
+                [
+                    f"你好，感谢你向匕首之心-宏伟宝库提交「{safe_title}」。",
+                    "",
+                    "你的投稿已经成功收录，现在可以在宏伟宝库中看到了。",
+                    "",
+                    "感谢你的分享，期待以后继续看到你的作品。",
+                ]
+            ),
+        )
+
+    if notice_type == "published_rejected":
+        return (
+            f"宏伟宝库投稿需要调整：{safe_title}",
+            "\n".join(
+                [
+                    f"你好，感谢你向匕首之心-宏伟宝库提交「{safe_title}」。",
+                    "",
+                    "经复核，您提交的资源在继续收录前还需要做一些调整，因此我们会先将它从宏伟宝库下架：",
+                    "",
+                    note,
+                    "",
+                    "你可以根据意见修改后重新提交，期待再次看到你的作品。",
+                ]
+            ),
+        )
+
+    return (
+        f"宏伟宝库投稿需要调整：{safe_title}",
         "\n".join(
             [
-                f"你的投稿「{title}」未通过审核。",
+                f"你好，感谢你向匕首之心-宏伟宝库提交「{safe_title}」。",
                 "",
-                "审阅意见：",
+                "不过在收录之前，我们希望你做一些调整：",
+                "",
                 note,
                 "",
-                "你可以根据意见修改后重新提交。",
+                "你可以根据意见修改后重新提交，期待再次看到你的作品。",
             ]
-        )
+        ),
     )
-    return message
 
 
 def send_email(smtp_config: SmtpConfig, message: EmailMessage) -> None:

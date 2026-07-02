@@ -341,8 +341,8 @@
       + '</div>'
       + (config.showFeedbackEmail
         ? '<div class="form-group full">'
-          + '<span class="form-label">反馈邮箱 <span class="form-hint">— 可选，仅审核驳回时用于接收意见</span></span>'
-          + '<input class="input" data-field="feedbackEmail" type="email" value="' + escAttr(values.feedbackEmail) + '" placeholder="name@example.com">'
+          + '<span class="form-label"><span class="required">*</span> 反馈邮箱 <span class="form-hint">— 仅审核通知时使用</span></span>'
+          + '<input class="input" data-field="feedbackEmail" type="email" value="' + escAttr(values.feedbackEmail) + '" placeholder="xxx@qq.com">'
           + '</div>'
         : '')
       + '<div class="form-group full">'

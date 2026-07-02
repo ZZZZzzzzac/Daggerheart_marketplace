@@ -16,7 +16,7 @@ from flask import Flask, jsonify, request, send_from_directory, session
 from werkzeug.utils import secure_filename
 
 from server import config
-from server.mailer import send_rejection_notice
+from server.mailer import send_approval_notice, send_rejection_notice
 
 
 ROOT_DIR = config.ROOT_DIR
@@ -101,7 +101,7 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
 
     @app.get("/api/public/entries")
     def public_entries():
-        return jsonify({"entries": load_entries(app)})
+        return jsonify({"entries": public_entries_only(load_entries(app))})
 
     @app.get("/api/public/tags")
     def public_tags():
@@ -110,7 +110,7 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
     @app.get("/api/public/bootstrap")
     def public_bootstrap():
         entries = load_entries(app)
-        return jsonify({"entries": entries, "tags": build_tag_counts(entries)})
+        return jsonify({"entries": public_entries_only(entries), "tags": build_tag_counts(entries)})
 
     @app.get("/api/public/likes")
     def public_likes():
@@ -191,6 +191,10 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         )
         entries.append(entry)
         save_entries(app, entries)
+        append_submission_review(
+            app,
+            build_submission_review(app, source=entry, action="entry_created"),
+        )
         return jsonify({"entry": entry}), 201
 
     @app.put("/api/admin/entries/<entry_id>")
@@ -207,7 +211,34 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         )
         entries[index] = normalized
         save_entries(app, entries)
+        append_submission_review(
+            app,
+            build_submission_review(app, source=normalized, action="entry_updated"),
+        )
         return jsonify({"entry": normalized})
+
+    @app.post("/api/admin/entries/<entry_id>/reject")
+    @require_admin_session
+    def reject_published_entry(entry_id: str):
+        payload = request.get_json(silent=True) or {}
+        review_note = normalize_review_note(payload.get("reviewNote"))
+        entries = load_entries(app)
+        index, current_entry = find_entry(entries, entry_id)
+        notification = send_published_rejection_notification(app, current_entry, review_note)
+        entries.pop(index)
+        save_entries(app, entries)
+        delete_cover_file(app, current_entry.get("coverPath", ""))
+        append_submission_review(
+            app,
+            build_submission_review(
+                app,
+                source=current_entry,
+                action="entry_rejected",
+                review_note=review_note,
+                notification=notification,
+            ),
+        )
+        return jsonify({"rejectedId": entry_id, "notification": notification})
 
     @app.delete("/api/admin/entries/<entry_id>")
     @require_admin_session
@@ -217,6 +248,10 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         entries.pop(index)
         save_entries(app, entries)
         delete_cover_file(app, current_entry.get("coverPath", ""))
+        append_submission_review(
+            app,
+            build_submission_review(app, source=current_entry, action="entry_deleted"),
+        )
         return jsonify({"deletedId": entry_id})
 
     @app.post("/api/admin/entries/import")
@@ -245,6 +280,17 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
             normalized.append(entry)
             existing_ids.add(entry["id"])
         save_entries(app, normalized)
+        append_submission_review(
+            app,
+            build_submission_review(
+                app,
+                source={
+                    "title": "批量导入",
+                    "summary": f"导入 {len(normalized)} 个条目",
+                },
+                action="entries_imported",
+            ),
+        )
         return jsonify({"imported": len(normalized)})
 
     @app.post("/api/admin/covers")
@@ -287,6 +333,10 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         )
         submissions.append(submission)
         save_submissions(app, submissions)
+        append_submission_review(
+            app,
+            build_submission_review(app, source=submission, action="submission_created"),
+        )
         return jsonify({"submission": submission}), 201
 
     @app.post("/api/public/covers")
@@ -340,6 +390,10 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         )
         submissions[index] = normalized
         save_submissions(app, submissions)
+        append_submission_review(
+            app,
+            build_submission_review(app, source=normalized, action="submission_updated"),
+        )
         return jsonify({"submission": normalized})
 
     @app.post("/api/admin/submissions/<submission_id>/approve")
@@ -371,22 +425,25 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
             "summary": submission.get("summary", ""),
             "coverPath": new_cover_path,
             "targetUrl": submission["targetUrl"],
+            "feedbackEmail": submission.get("feedbackEmail", ""),
             "createdAt": now,
             "updatedAt": now,
         }
         entries.append(entry)
         save_entries(app, entries)
+        notification = send_submission_approval_notification(app, submission)
         append_submission_review(
             app,
             build_submission_review(
                 app,
-                submission=submission,
+                source=submission,
                 action="approved",
                 entry=entry,
                 cover_path=new_cover_path,
+                notification=notification,
             ),
         )
-        return jsonify({"entry": entry})
+        return jsonify({"entry": public_entry_only(entry), "notification": notification})
 
     @app.delete("/api/admin/submissions/<submission_id>")
     @require_admin_session
@@ -406,7 +463,7 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
             app,
             build_submission_review(
                 app,
-                submission=submission,
+                source=submission,
                 action="rejected",
                 review_note=review_note,
                 notification=notification,
@@ -523,11 +580,23 @@ def load_entries(app: Flask) -> list[dict[str, Any]]:
             entry["likeCount"] = 0
         if "likedBy" not in entry:
             entry["likedBy"] = []
+        if "feedbackEmail" not in entry:
+            entry["feedbackEmail"] = ""
     return entries
 
 
 def save_entries(app: Flask, entries: list[dict[str, Any]]) -> None:
     atomic_write_json(Path(app.config["ENTRIES_FILE"]), {"entries": entries})
+
+
+def public_entry_only(entry: dict[str, Any]) -> dict[str, Any]:
+    cleaned = dict(entry)
+    cleaned.pop("feedbackEmail", None)
+    return cleaned
+
+
+def public_entries_only(entries: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    return [public_entry_only(entry) for entry in entries]
 
 
 def get_client_ip_hash() -> str:
@@ -573,6 +642,10 @@ def normalize_entry(
     summary = normalize_optional_text(payload.get("summary"))
     target_url = normalize_external_url(payload.get("targetUrl"))
     cover_path = normalize_cover_path(payload.get("coverPath"), cover_url_prefix)
+    if current_entry:
+        feedback_email = normalize_optional_text(current_entry.get("feedbackEmail"))
+    else:
+        feedback_email = normalize_optional_feedback_email(payload.get("feedbackEmail"))
 
     if current_entry:
         entry_id = current_entry["id"]
@@ -596,6 +669,7 @@ def normalize_entry(
         "summary": summary,
         "coverPath": cover_path,
         "targetUrl": target_url,
+        "feedbackEmail": feedback_email,
         "createdAt": created_at,
         "updatedAt": now_iso(),
     }
@@ -665,6 +739,15 @@ def normalize_external_url(value: Any) -> str:
 
 
 def normalize_feedback_email(value: Any) -> str:
+    email = normalize_optional_text(value).lower()
+    if not email:
+        raise ValidationError("feedbackEmail is required")
+    if not re.fullmatch(r"[^@\s]+@[^@\s]+\.[^@\s]+", email):
+        raise ValidationError("feedbackEmail must be a valid email address")
+    return email
+
+
+def normalize_optional_feedback_email(value: Any) -> str:
     email = normalize_optional_text(value).lower()
     if not email:
         return ""
@@ -791,14 +874,25 @@ def append_submission_review(app: Flask, review: dict[str, Any]) -> None:
 def build_submission_review(
     app: Flask,
     *,
-    submission: dict[str, Any],
+    source: dict[str, Any],
     action: str,
     entry: dict[str, Any] | None = None,
     cover_path: str | None = None,
     review_note: str = "",
     notification: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    if action not in {"approved", "rejected"}:
+    allowed_actions = {
+        "submission_created",
+        "submission_updated",
+        "approved",
+        "rejected",
+        "entry_created",
+        "entry_updated",
+        "entry_deleted",
+        "entry_rejected",
+        "entries_imported",
+    }
+    if action not in allowed_actions:
         raise ValidationError("review action is invalid")
 
     reviews = load_submission_reviews(app)
@@ -812,20 +906,20 @@ def build_submission_review(
 
     return {
         "id": review_id,
-        "submissionId": submission.get("id", ""),
+        "submissionId": source.get("id", "") if action in {"approved", "rejected"} or action.startswith("submission_") else "",
         "action": action,
-        "entryId": entry.get("id", "") if entry else "",
-        "title": submission.get("title", ""),
-        "author": submission.get("author", ""),
-        "contentTags": list(submission.get("contentTags", [])),
-        "flavorTags": list(submission.get("flavorTags", [])),
-        "summary": submission.get("summary", ""),
-        "coverPath": cover_path if cover_path is not None else submission.get("coverPath", ""),
-        "targetUrl": submission.get("targetUrl", ""),
-        "feedbackEmail": submission.get("feedbackEmail", ""),
+        "entryId": entry.get("id", "") if entry else source.get("id", "") if action.startswith("entry_") else "",
+        "title": source.get("title", ""),
+        "author": source.get("author", ""),
+        "contentTags": list(source.get("contentTags", [])),
+        "flavorTags": list(source.get("flavorTags", [])),
+        "summary": source.get("summary", ""),
+        "coverPath": cover_path if cover_path is not None else source.get("coverPath", ""),
+        "targetUrl": source.get("targetUrl", ""),
+        "feedbackEmail": source.get("feedbackEmail", ""),
         "reviewNote": review_note,
         "notification": normalized_notification,
-        "submittedAt": submission.get("createdAt", ""),
+        "submittedAt": source.get("createdAt", ""),
         "reviewedAt": now_iso(),
     }
 
@@ -941,6 +1035,13 @@ def send_submission_rejection_notification(
     submission: dict[str, Any],
     review_note: str,
 ) -> dict[str, str]:
+    return send_resource_notice(app, submission, review_note, "submission_rejected")
+
+
+def send_submission_approval_notification(
+    app: Flask,
+    submission: dict[str, Any],
+) -> dict[str, str]:
     recipient = normalize_optional_text(submission.get("feedbackEmail"))
     if not recipient:
         return {"status": "skipped", "reason": "no_feedback_email"}
@@ -951,7 +1052,51 @@ def send_submission_rejection_notification(
             result = sender(
                 recipient=recipient,
                 title=submission.get("title", ""),
+                review_note="",
+                notice_type="submission_approved",
+            )
+            return normalize_notification_result(result)
+        except Exception as exc:  # noqa: BLE001 - 邮件失败不能阻塞通过
+            return {
+                "status": "failed",
+                "reason": "send_failed",
+                "message": str(exc)[:200] or exc.__class__.__name__,
+            }
+
+    return send_approval_notice(
+        app_config=app.config,
+        secret_dir=Path(app.config["SECRETS_DIR"]),
+        recipient=recipient,
+        title=submission.get("title", ""),
+    )
+
+
+def send_published_rejection_notification(
+    app: Flask,
+    entry: dict[str, Any],
+    review_note: str,
+) -> dict[str, str]:
+    return send_resource_notice(app, entry, review_note, "published_rejected")
+
+
+def send_resource_notice(
+    app: Flask,
+    resource: dict[str, Any],
+    review_note: str,
+    notice_type: str,
+) -> dict[str, str]:
+    recipient = normalize_optional_text(resource.get("feedbackEmail"))
+    if not recipient:
+        return {"status": "skipped", "reason": "no_feedback_email"}
+
+    sender = app.config.get("MAIL_SENDER")
+    if callable(sender):
+        try:
+            result = sender(
+                recipient=recipient,
+                title=resource.get("title", ""),
                 review_note=review_note,
+                notice_type=notice_type,
             )
             return normalize_notification_result(result)
         except Exception as exc:  # noqa: BLE001 - 邮件失败不能阻塞驳回
@@ -965,8 +1110,9 @@ def send_submission_rejection_notification(
         app_config=app.config,
         secret_dir=Path(app.config["SECRETS_DIR"]),
         recipient=recipient,
-        title=submission.get("title", ""),
+        title=resource.get("title", ""),
         review_note=review_note,
+        notice_type=notice_type,
     )
 
 

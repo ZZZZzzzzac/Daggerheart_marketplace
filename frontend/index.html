@@ -2001,6 +2001,7 @@
 
       if (!body.title) { showToast('标题不能为空', 'error'); return; }
       if (!body.targetUrl) { showToast('跳转链接不能为空', 'error'); return; }
+      if (!body.feedbackEmail) { showToast('反馈邮箱不能为空', 'error'); return; }
 
       submitSave.disabled = true;
       try {
