@@ -101,9 +101,7 @@
 
 ## 推送流程
 
-用户说"推送"或"推 PR"时：以部署仓库 `dqqql/Daggerheart_marketplace` 的最新 `master` 为基线，本地 commit → push 功能分支到用户仓库 `ZZZZzzzzac/Daggerheart_marketplace` → 向 `dqqql/Daggerheart_marketplace` 的 `master` 创建 PR。部署仓库 fork 自用户仓库；当前线上版本以部署仓库为准。
-
-PR 合并到部署仓库的 `master` 后，由 Cloudflare Pages 自动部署生产。合并后优先检查 Pages 部署状态与线上 API 健康，不再默认走 VPS `git pull + systemd restart` 流程。
+用户说"推送"时：本地 commit → push 到远端仓库；`master` 分支由 Cloudflare Pages 自动拉取并部署生产。推送后优先检查 Pages 部署状态与线上 API 健康，不再默认走 VPS `git pull + systemd restart` 流程。
 
 建议最小验收顺序：
 
@@ -127,7 +125,7 @@ PR 合并到部署仓库的 `master` 后，由 Cloudflare Pages 自动部署生�
 
 Issues live in GitHub Issues (`dqqql/Daggerheart_marketplace`). See `docs/agents/issue-tracker.md`.
 
-推送和 PR 按上文“推送流程”分别选择用户仓库与部署仓库。遇到权限不足时先说明阻碍，不得自行改用其他仓库。
+推送和 PR 的目标均为 `dqqql/Daggerheart_marketplace`。遇到权限不足时先说明阻碍，不得自行切换到上游或其他仓库。
 
 ### Triage labels
 
