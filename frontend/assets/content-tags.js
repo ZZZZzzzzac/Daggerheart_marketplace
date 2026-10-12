@@ -16,7 +16,8 @@
     { tag: 'PbDH', description: '以《匕首心》为基础进行改造、“可独立运行”且“不直接兼容原版”的游戏，以及专为这些游戏制作的配套资源；使用前请确认适用规则，并在风味标签里加入对应的规则名称。' },
     { tag: '设定', description: '世界、地区、地点、组织、人物或文化等，无机制交互的纯背景资料，为创作和跑团提供素材。' },
     { tag: '电子工具', description: '辅助准备或进行游戏的网站、软件、插件与数字化工具，例如车卡器、骰娘脚本、跑团工具或素材网站。' },
-    { tag: '工具书', description: '供玩家或主持人查阅使用的指南、参考表、素材集与方法汇编，侧重辅助创作或游戏实践。' }
+    { tag: '工具书', description: '供玩家或主持人查阅使用的指南、参考表、素材集与方法汇编，侧重辅助创作或游戏实践。' },
+    { tag: '其他', description: '不属于上述内容类型的资源；可通过风味标签和简介补充说明具体内容。' }
   ].map(function (item) { return Object.freeze(item); });
   var allowed = new Set(definitions.map(function (item) { return item.tag; }));
   var aliases = new Map([
